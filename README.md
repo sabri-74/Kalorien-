@@ -14,7 +14,7 @@ und lässt sich auf dem Handy wie eine normale App installieren. Alle Daten blei
 - Blättern zwischen Tagen
 
 **Lebensmittel**
-- Eingebaute Datenbank mit über 140 gängigen Lebensmitteln (pro 100 g, mit typischen Portionen)
+- Eingebaute Datenbank mit über 130 gängigen Lebensmitteln (pro 100 g, mit typischen Portionen)
 - Online-Suche und Barcode-Suche über [Open Food Facts](https://world.openfoodfacts.org)
 - Barcode-Scan mit der Kamera (Chrome/Android; sonst EAN von Hand eingeben)
 - Eigene Lebensmittel anlegen, „Zuletzt verwendet“-Liste
