@@ -1,4 +1,5 @@
 // Speicherung im Browser (localStorage). Alle Daten bleiben auf dem Gerät.
+// Fotos liegen separat in IndexedDB (siehe photos.js).
 
 const KEY = 'kalorien.v1';
 
@@ -11,13 +12,16 @@ export const MEALS = [
 
 export function defaultState() {
   return {
-    version: 1,
+    version: 2,
     profile: null, // { name, sex, age, height, weight, activity, goal, targetWeight }
-    settings: { theme: 'system', customKcal: null },
+    settings: { theme: 'system', customKcal: null, apiKey: '' },
     customFoods: [],
-    recentFoods: [], // IDs, neueste zuerst
-    days: {}, // { 'YYYY-MM-DD': { meals: {breakfast: [...]}, water: 0, workouts: [] } }
+    recentFoods: [], // Lebensmittel-Objekte, neueste zuerst
+    favorites: [], // Lebensmittel-Objekte
+    dishes: [], // eigene Gerichte
+    days: {}, // { 'YYYY-MM-DD': { meals: {...}, water, workouts } }
     weights: [], // [{ date, kg }]
+    activeWorkout: null,
   };
 }
 
@@ -44,15 +48,29 @@ export function save(state) {
   }
 }
 
+/** Einträge aus Version 1 (per100) auf das neue Format (base + unit) heben. */
+function migrateEntry(e) {
+  if (e.base) return { unit: 'g', ...e };
+  const base = e.per100 ||
+    (e.amount ? { kcal: (e.kcal / e.amount) * 100, protein: (e.protein / e.amount) * 100, carbs: (e.carbs / e.amount) * 100, fat: (e.fat / e.amount) * 100 } : { kcal: e.kcal, protein: e.protein, carbs: e.carbs, fat: e.fat });
+  const { per100, ...rest } = e;
+  return { ...rest, unit: e.amount ? 'g' : 'portion', amount: e.amount || 1, base };
+}
+
 /** Füllt fehlende Felder auf, damit ältere oder importierte Daten funktionieren. */
 export function migrate(data) {
   const base = defaultState();
-  const state = { ...base, ...data, settings: { ...base.settings, ...(data.settings || {}) } };
+  const state = { ...base, ...data, settings: { ...base.settings, ...(data.settings || {}) }, version: 2 };
+  for (const key of ['customFoods', 'recentFoods', 'favorites', 'dishes', 'weights']) {
+    if (!Array.isArray(state[key])) state[key] = [];
+  }
   for (const key of Object.keys(state.days || {})) {
     const d = state.days[key];
-    state.days[key] = { ...emptyDay(), ...d, meals: { ...emptyDay().meals, ...(d.meals || {}) } };
+    const meals = { ...emptyDay().meals, ...(d.meals || {}) };
+    for (const m of Object.keys(meals)) meals[m] = (meals[m] || []).map(migrateEntry);
+    state.days[key] = { ...emptyDay(), ...d, meals, workouts: d.workouts || [] };
   }
-  state.weights = (state.weights || []).filter((w) => w && w.date && w.kg).sort((a, b) => a.date.localeCompare(b.date));
+  state.weights = state.weights.filter((w) => w && w.date && w.kg).sort((a, b) => a.date.localeCompare(b.date));
   return state;
 }
 

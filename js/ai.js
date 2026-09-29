@@ -1,0 +1,231 @@
+// KI-Kalorienerkennung.
+// In der Claude-Vorschau (Artifact) läuft sie über das Claude-Konto der
+// betrachtenden Person. In der eigenständigen App wird die Claude API direkt
+// aus dem Browser mit einem eigenen API-Schlüssel aufgerufen (keine
+// Build-Tools, daher per fetch statt SDK).
+
+import { normalizeAiResult } from './calc.js';
+
+export const AI_MODEL = 'claude-opus-5-5';
+const API_URL = 'https://api.anthropic.com/v1/messages';
+
+export class AiError extends Error {
+  constructor(code, message) {
+    super(message || code);
+    this.code = code;
+  }
+}
+
+const ERROR_TEXT = {
+  no_provider: 'Die KI ist noch nicht eingerichtet. Hinterleg im Profil deinen Claude-API-Schlüssel.',
+  not_granted: 'Die KI-Nutzung wurde nicht erlaubt.',
+  auth: 'Der API-Schlüssel wurde abgelehnt. Prüf ihn im Profil.',
+  rate: 'Gerade zu viele Anfragen. Versuch es in einer Minute noch einmal.',
+  overloaded: 'Die KI ist gerade ausgelastet. Versuch es gleich noch einmal.',
+  network: 'Keine Verbindung zur KI. Prüf deine Internetverbindung.',
+  refused: 'Die KI konnte dieses Bild nicht auswerten.',
+  invalid: 'Die Antwort der KI war unvollständig. Versuch es noch einmal.',
+  credit: 'Dein API-Guthaben ist aufgebraucht. Lade es in der Claude Console auf.',
+  cancelled: 'Abgebrochen.',
+};
+
+export function aiErrorText(err) {
+  return ERROR_TEXT[err?.code] || 'Die Analyse hat nicht geklappt. Versuch es noch einmal.';
+}
+
+// ---------- Anbieter erkennen ----------
+
+let samplePromise;
+function getSample() {
+  if (!samplePromise) {
+    samplePromise = window.claude?.use
+      ? Promise.resolve(window.claude.use('sample')).catch(() => null)
+      : Promise.resolve(null);
+  }
+  return samplePromise;
+}
+
+/** Welche KI steht zur Verfügung? { provider: 'claude' | 'api' | null, images } */
+export async function aiStatus(apiKey) {
+  const sample = await getSample();
+  if (sample) {
+    const limits = await sample.limits().catch(() => null);
+    return { provider: 'claude', images: !!limits?.images };
+  }
+  if (apiKey) return { provider: 'api', images: true };
+  return { provider: null, images: false };
+}
+
+// ---------- Prompts ----------
+
+const FOOD_RULES = `Du bist eine erfahrene Ernährungsberaterin und schätzt Nährwerte von Mahlzeiten.
+- Erfasse jede erkennbare Komponente als eigenen Eintrag (Hauptzutat, Beilage, Soße, Topping, Getränk).
+- Schätze die Menge in Gramm realistisch anhand von Tellergröße, Besteck, Händen oder Verpackungen.
+- Nutze Durchschnittswerte aus deutschen Nährwerttabellen; denk an verstecktes Fett (Bratöl, Butter, Dressing).
+- kcal, protein, carbs und fat gelten für die geschätzte Grammmenge, NICHT pro 100 g.
+- Namen auf Deutsch, kurz und alltagsnah (z. B. "Spaghetti, gekocht", "Tomatensoße").
+- confidence ist "hoch", "mittel" oder "niedrig".
+- Ist kein Essen zu erkennen, gib eine leere items-Liste zurück und erkläre es in note.
+
+Antworte nur mit JSON in genau diesem Format:
+{"title": "kurzer Name der Mahlzeit", "items": [{"name": "…", "grams": 150, "kcal": 240, "protein": 8.5, "carbs": 30, "fat": 9, "confidence": "mittel"}], "note": "ein Satz zu Unsicherheiten oder Tipps"}`;
+
+const FOOD_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['title', 'items', 'note'],
+  properties: {
+    title: { type: 'string' },
+    note: { type: 'string' },
+    items: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['name', 'grams', 'kcal', 'protein', 'carbs', 'fat', 'confidence'],
+        properties: {
+          name: { type: 'string' },
+          grams: { type: 'number' },
+          kcal: { type: 'number' },
+          protein: { type: 'number' },
+          carbs: { type: 'number' },
+          fat: { type: 'number' },
+          confidence: { type: 'string', enum: ['hoch', 'mittel', 'niedrig'] },
+        },
+      },
+    },
+  },
+};
+
+// ---------- Aufrufe ----------
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(',')[1]);
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(blob);
+  });
+}
+
+async function callApi(apiKey, content, { schema, signal } = {}) {
+  let res;
+  try {
+    res = await fetch(API_URL, {
+      method: 'POST',
+      signal,
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'server-side-fallback-2026-07-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: AI_MODEL,
+        max_tokens: 16000,
+        fallbacks: 'default',
+        output_config: { effort: 'medium', ...(schema ? { format: { type: 'json_schema', schema } } : {}) },
+        messages: [{ role: 'user', content }],
+      }),
+    });
+  } catch (e) {
+    throw new AiError(e?.name === 'AbortError' ? 'cancelled' : 'network');
+  }
+  if (!res.ok) {
+    let type = '';
+    try {
+      type = (await res.json())?.error?.type || '';
+    } catch {
+      /* Fehlertext nicht lesbar */
+    }
+    if (res.status === 401 || res.status === 403) throw new AiError('auth');
+    if (res.status === 429) throw new AiError('rate');
+    if (res.status === 400 && /credit|billing/i.test(type)) throw new AiError('credit');
+    if (res.status >= 500) throw new AiError('overloaded');
+    throw new AiError('invalid', `HTTP ${res.status} ${type}`);
+  }
+  const data = await res.json();
+  if (data.stop_reason === 'refusal') throw new AiError('refused');
+  return (data.content || [])
+    .filter((b) => b.type === 'text')
+    .map((b) => b.text)
+    .join('');
+}
+
+function parseJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    const m = String(text).match(/\{[\s\S]*\}/);
+    if (m) {
+      try {
+        return JSON.parse(m[0]);
+      } catch {
+        /* weiter unten */
+      }
+    }
+  }
+  throw new AiError('invalid');
+}
+
+function mapSampleError(e) {
+  const map = { not_granted: 'not_granted', rate_limited: 'rate', cancelled: 'cancelled', invalid_json: 'invalid', refused: 'refused' };
+  return new AiError(map[e?.code] || 'overloaded', e?.message);
+}
+
+/**
+ * Mahlzeit erkennen – aus einem Foto (Blob), einer Beschreibung oder beidem.
+ * Liefert { title, note, items: [{ name, amount, confidence, base }] }.
+ */
+export async function analyzeMeal({ apiKey, image, text, signal }) {
+  const status = await aiStatus(apiKey);
+  if (!status.provider) throw new AiError('no_provider');
+  const source = image
+    ? `Analysiere das Foto dieser Mahlzeit.${text ? ` Zusatzinfo der Person: "${text}"` : ''}`
+    : `Die Person beschreibt, was sie gegessen hat: "${text}"`;
+  const prompt = `${FOOD_RULES}\n\n${source}`;
+
+  let raw;
+  if (status.provider === 'claude') {
+    const sample = await getSample();
+    try {
+      raw = await sample.json(prompt, { images: image && status.images ? [image] : undefined, signal });
+    } catch (e) {
+      throw mapSampleError(e);
+    }
+  } else {
+    const content = [];
+    if (image) {
+      content.push({ type: 'image', source: { type: 'base64', media_type: image.type || 'image/jpeg', data: await blobToBase64(image) } });
+    }
+    content.push({ type: 'text', text: prompt });
+    raw = parseJson(await callApi(apiKey, content, { schema: FOOD_SCHEMA, signal }));
+  }
+  const result = normalizeAiResult(raw);
+  if (!result.items.length && !result.note) throw new AiError('invalid');
+  return result;
+}
+
+/** Kurzes Coaching-Feedback als Text. */
+export async function coachFeedback({ apiKey, summary, signal, onText }) {
+  const status = await aiStatus(apiKey);
+  if (!status.provider) throw new AiError('no_provider');
+  const prompt = `Du bist eine freundliche, sachliche Ernährungs- und Fitness-Coachin. Hier sind die Daten der letzten Tage aus einer Kalorien-App:
+
+${summary}
+
+Gib 3 bis 4 konkrete, motivierende Tipps auf Deutsch (Du-Form). Jeder Tipp eine Zeile, beginnend mit "• ". Beziehe dich auf die Zahlen. Insgesamt höchstens 110 Wörter, keine Überschrift, keine medizinischen Diagnosen.`;
+  if (status.provider === 'claude') {
+    const sample = await getSample();
+    try {
+      const { text } = await sample(prompt, { signal, onText: onText ? ({ text: t }) => onText(t) : undefined });
+      return text;
+    } catch (e) {
+      throw mapSampleError(e);
+    }
+  }
+  const text = await callApi(apiKey, [{ type: 'text', text: prompt }], { signal });
+  onText?.(text);
+  return text;
+}

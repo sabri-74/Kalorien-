@@ -79,3 +79,48 @@ test('Datenbanken sind vollständig', () => {
   for (const p of PLANS) for (const d of p.days) for (const id of d.exercises) assert.ok(ids.has(id), `${p.name}: ${id}`);
   assert.ok(CARDIO.every((a) => a.met > 0));
 });
+
+test('Basis skalieren: Gramm und Portionen', () => {
+  const base = { kcal: 200, protein: 10, carbs: 20, fat: 5 };
+  assert.deepEqual(c.scaleBase(base, 50, 'g'), { kcal: 100, protein: 5, carbs: 10, fat: 2.5 });
+  assert.deepEqual(c.scaleBase(base, 1.5, 'portion'), { kcal: 300, protein: 15, carbs: 30, fat: 7.5 });
+});
+
+test('Gericht: Summe und Portion', () => {
+  const dish = {
+    servings: 2,
+    ingredients: [
+      { amount: 200, kcal: 300, protein: 10, carbs: 60, fat: 2 },
+      { amount: 100, kcal: 101, protein: 20, carbs: 0, fat: 1.5 },
+    ],
+  };
+  const t = c.dishTotals(dish);
+  assert.equal(t.total.kcal, 401);
+  assert.equal(t.grams, 300);
+  assert.deepEqual(t.perServing, { kcal: 201, protein: 15, carbs: 30, fat: 1.8 });
+  assert.equal(c.dishTotals({ servings: 0, ingredients: [] }).perServing.kcal, 0);
+});
+
+test('Mahlzeit nach Uhrzeit', () => {
+  assert.equal(c.mealForHour(7), 'breakfast');
+  assert.equal(c.mealForHour(12), 'lunch');
+  assert.equal(c.mealForHour(19), 'dinner');
+  assert.equal(c.mealForHour(16), 'snacks');
+  assert.equal(c.mealForHour(23), 'snacks');
+});
+
+test('KI-Antwort wird bereinigt', () => {
+  const r = c.normalizeAiResult({
+    title: 'Spaghetti',
+    items: [
+      { name: 'Spaghetti', grams: 200, kcal: 300, protein: '10,5', carbs: 60, fat: 2, confidence: 'hoch' },
+      { name: '', grams: 50, kcal: 10 },
+      { name: 'Soße', grams: 0, kcal: 80 },
+      { name: 'Parmesan', grams: 10, kcal: 43, protein: 3.8, carbs: 0, fat: 2.9, confidence: 'egal' },
+    ],
+  });
+  assert.equal(r.items.length, 2);
+  assert.deepEqual(r.items[0].base, { kcal: 150, protein: 5.3, carbs: 30, fat: 1 });
+  assert.equal(r.items[1].confidence, 'mittel');
+  assert.equal(c.normalizeAiResult(null).items.length, 0);
+});

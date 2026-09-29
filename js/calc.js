@@ -152,3 +152,83 @@ export function movingAverage(values, window = 7) {
     return round(slice.reduce((a, b) => a + b, 0) / slice.length, 1);
   });
 }
+
+// ---------- Gerichte, Einträge, KI ----------
+
+/** Nährwerte aus einer Basis (pro 100 g bzw. pro 1 Portion) für eine Menge. */
+export function scaleBase(base, amount, unit = 'g') {
+  const k = unit === 'portion' ? amount : amount / 100;
+  return {
+    kcal: round((base.kcal || 0) * k),
+    protein: round((base.protein || 0) * k, 1),
+    carbs: round((base.carbs || 0) * k, 1),
+    fat: round((base.fat || 0) * k, 1),
+  };
+}
+
+/** Summe und Werte pro Portion eines Gerichts aus seinen Zutaten. */
+export function dishTotals(dish) {
+  const total = sumNutrients(dish.ingredients || []);
+  const servings = Math.max(1, Number(dish.servings) || 1);
+  const grams = (dish.ingredients || []).reduce((s, i) => s + (i.unit === 'portion' ? 0 : Number(i.amount) || 0), 0);
+  return {
+    total,
+    grams: round(grams),
+    perServing: {
+      kcal: round(total.kcal / servings),
+      protein: round(total.protein / servings, 1),
+      carbs: round(total.carbs / servings, 1),
+      fat: round(total.fat / servings, 1),
+    },
+  };
+}
+
+/** Passende Mahlzeit zur Uhrzeit. */
+export function mealForHour(hour) {
+  if (hour >= 5 && hour < 11) return 'breakfast';
+  if (hour >= 11 && hour < 15) return 'lunch';
+  if (hour >= 17 && hour < 22) return 'dinner';
+  return 'snacks';
+}
+
+export function greeting(hour) {
+  if (hour < 5) return 'Gute Nacht';
+  if (hour < 11) return 'Guten Morgen';
+  if (hour < 18) return 'Hallo';
+  return 'Guten Abend';
+}
+
+const clampNum = (v, min, max) => {
+  const n = Number(String(v ?? '').replace(',', '.'));
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : 0;
+};
+
+/**
+ * Bereinigt eine KI-Antwort: nur sinnvolle Zahlen, Basis pro 100 g
+ * berechnet, damit sich die Menge später frei ändern lässt.
+ */
+export function normalizeAiResult(raw) {
+  const items = (Array.isArray(raw?.items) ? raw.items : [])
+    .map((it) => {
+      const grams = clampNum(it.grams, 0, 3000);
+      const kcal = clampNum(it.kcal, 0, 10000);
+      const protein = clampNum(it.protein, 0, 500);
+      const carbs = clampNum(it.carbs, 0, 1000);
+      const fat = clampNum(it.fat, 0, 500);
+      const name = String(it.name || '').trim().slice(0, 80);
+      if (!name || !grams) return null;
+      const f = 100 / grams;
+      return {
+        name,
+        amount: round(grams),
+        confidence: ['hoch', 'mittel', 'niedrig'].includes(it.confidence) ? it.confidence : 'mittel',
+        base: { kcal: round(kcal * f, 1), protein: round(protein * f, 1), carbs: round(carbs * f, 1), fat: round(fat * f, 1) },
+      };
+    })
+    .filter(Boolean);
+  return {
+    title: String(raw?.title || '').trim().slice(0, 80) || (items[0]?.name ?? 'Mahlzeit'),
+    note: String(raw?.note || '').trim().slice(0, 300),
+    items,
+  };
+}

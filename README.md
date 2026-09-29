@@ -1,45 +1,67 @@
 # Kalorien & Fitness
 
-Eine Web-App zum Kalorienzählen und Trainieren. Sie läuft komplett im Browser, funktioniert offline
-und lässt sich auf dem Handy wie eine normale App installieren. Alle Daten bleiben auf deinem Gerät.
+Eine Web-App zum Kalorienzählen und Trainieren, mit KI-Foto-Erkennung. Sie läuft komplett im Browser,
+funktioniert offline und lässt sich auf dem Handy wie eine normale App installieren.
+Deine Daten bleiben auf deinem Gerät.
 
 ## Funktionen
 
-**Tagebuch**
-- Tageskalorienbudget als Ring: Ziel − Gegessen + Training = Übrig
-- Eiweiß, Kohlenhydrate und Fett mit Tageszielen
-- Vier Mahlzeiten (Frühstück, Mittag, Abend, Snacks), Einträge antippen zum Bearbeiten
-- „Von gestern übernehmen“ für wiederkehrende Mahlzeiten
-- Wasser-Tracker mit Gläsern (Ziel ≈ 35 ml pro kg Körpergewicht)
-- Blättern zwischen Tagen
+**KI-Kalorienerkennung**
+- Auf den orangefarbenen Kamera-Knopf tippen, das Essen fotografieren, fertig: Die KI erkennt jede
+  Komponente (Beilage, Soße, Getränk …), schätzt die Menge in Gramm und die Nährwerte.
+- Vor dem Eintragen lässt sich alles anpassen: Mengen per +/−, Namen ändern, Zutaten entfernen.
+- „Etwas stimmt nicht?“: der KI eine Korrektur schreiben („das ist Vollkornreis, nur eine halbe Portion“),
+  dann schätzt sie neu.
+- Ohne Foto geht es auch: „Essen beschreiben“, z. B. „Döner mit allem und eine Cola“.
+- Jedes Ergebnis kann direkt als **Gericht** gespeichert werden.
 
-**Lebensmittel**
-- Eingebaute Datenbank mit über 130 gängigen Lebensmitteln (pro 100 g, mit typischen Portionen)
-- Online-Suche und Barcode-Suche über [Open Food Facts](https://world.openfoodfacts.org)
-- Barcode-Scan mit der Kamera (Chrome/Android; sonst EAN von Hand eingeben)
-- Eigene Lebensmittel anlegen, „Zuletzt verwendet“-Liste
+**Eigene Gerichte**
+- Rezepte aus Zutaten der Datenbank zusammenstellen, mit Portionenzahl, optional mit Foto.
+- Mit einem Tipp wieder eintragen (½, 1, 1½ oder 2 Portionen).
+- Eine Mahlzeit aus dem Tagebuch „Als Gericht speichern“.
+- Fünf Vorlagen zum Start (Porridge, Hähnchen-Reis, Bolognese, Griechischer Salat, Skyr-Bowl).
+
+**Tagebuch**
+- Wochenleiste mit Mini-Ringen: Auf einen Blick sieht man, welche Tage im Ziel waren.
+- Kalorien-Ring (Ziel − Gegessen + Training) und Makros mit „noch … g“.
+- Eine Suche für alles: Datenbank (135 Lebensmittel), eigene Lebensmittel, Gerichte, Favoriten,
+  zuletzt verwendet, Online-Suche über Open Food Facts, Barcode (Kamera oder Eingabe).
+- Schnelleintrag „Nur kcal“, „Wie gestern“, Einträge antippen zum Bearbeiten, Löschen mit „Rückgängig“.
+- Wasser-Tracker.
 
 **Training**
-- Ausdauer eintragen: über 20 Aktivitäten, Kalorienverbrauch per MET-Wert und Körpergewicht
-- Krafttraining mit Sätzen, Wiederholungen und Gewicht; Werte vom letzten Mal werden vorgeschlagen
-- Fertige Pläne: Ganzkörper, Push/Pull/Beine, Oberkörper/Unterkörper, Zuhause ohne Geräte
-- Pausentimer (90 s) nach jedem erledigten Satz, mit Vibration
-- Übungsbibliothek mit Technik-Tipps, persönliche Bestleistungen (geschätztes 1RM nach Epley)
+- Ausdauer mit über 20 Sportarten (Verbrauch per MET-Wert und Körpergewicht).
+- Krafttraining mit Plänen, Werten vom letzten Mal, Satz-Häkchen und 90-Sekunden-Pausentimer.
+- Übungsbibliothek mit Technik-Tipps, Bestleistungen (geschätztes 1RM).
 
-**Fortschritt**
-- Serie (Tage in Folge), Ø Kalorien, Gewichtsverlauf, BMI
-- Kalorien-Diagramm für 7 oder 30 Tage mit Ziellinie
-- Gewichtskurve mit Trendlinie (gleitender Durchschnitt) und Zielgewicht
+**Statistik**
+- Serie, Tage im Ziel, Ø Kalorien, Gewicht und BMI.
+- KI-Coach: persönliche Tipps aus den letzten 7 Tagen.
+- Diagramme für Kalorien (7/30 Tage) und Gewicht mit Trendlinie und Zielgewicht.
 
-**Profil**
-- Bedarf nach Mifflin-St-Jeor (Grundumsatz × Aktivitätsfaktor), Ziel Abnehmen/Halten/Aufbauen
-- Automatische Makroziele (Eiweiß nach Körpergewicht), eigenes Kalorienziel möglich
-- Hell-/Dunkelmodus, Sicherung als JSON-Datei exportieren und importieren, Beispieldaten
+**Einrichtung & Profil**
+- Assistent beim ersten Start: Ziel → Körperdaten → Aktivität → persönliches Tagesziel.
+- Bedarf nach Mifflin-St Jeor, automatische Makroziele, eigenes Kalorienziel möglich.
+- Hell-/Dunkelmodus, Sicherung als Datei, Beispieldaten.
+
+## KI einrichten
+
+Die eigenständige App ruft die Claude API direkt aus dem Browser auf. Dafür braucht sie einen eigenen
+API-Schlüssel:
+
+1. Unter <https://console.anthropic.com/settings/keys> einen Schlüssel anlegen (Guthaben aufladen).
+2. In der App: Profil → **KI-Erkennung** → Schlüssel einfügen → „Schlüssel speichern“.
+
+Der Schlüssel wird nur im Browser dieses Geräts gespeichert, nicht in Sicherungsdateien exportiert und
+nur an `api.anthropic.com` gesendet. Eine Foto-Analyse kostet je nach Bild etwa 1 bis 3 Cent.
+Verwendet wird das Modell `claude-opus-5-5`.
+
+> Hinweis: Wer die App öffentlich hostet, sollte bedenken, dass jeder Nutzer seinen eigenen Schlüssel
+> eintragen muss. Für eine App mit vielen Nutzern gehört der Schlüssel auf einen eigenen Server.
 
 ## Starten
 
-Keine Installation und kein Build nötig. Die Dateien müssen nur über einen Webserver ausgeliefert werden
-(wegen der JavaScript-Module reicht Doppelklick auf `index.html` nicht):
+Keine Installation und kein Build nötig; die Dateien müssen nur über einen Webserver ausgeliefert werden:
 
 ```bash
 npm start            # oder: python3 -m http.server 8080
@@ -50,8 +72,8 @@ Dann <http://localhost:8080> öffnen.
 ### Aufs Handy bringen
 
 Am einfachsten über **GitHub Pages**: im Repository unter *Settings → Pages* den Branch auswählen und
-speichern. Danach die angezeigte Adresse auf dem Handy öffnen und „Zum Startbildschirm hinzufügen“ wählen.
-Die App funktioniert anschließend auch ohne Internet.
+speichern. Die angezeigte Adresse auf dem Handy öffnen und „Zum Startbildschirm hinzufügen“ wählen.
+Danach funktioniert die App auch offline (nur KI und Online-Suche brauchen Internet).
 
 ## Tests
 
@@ -59,20 +81,24 @@ Die App funktioniert anschließend auch ohne Internet.
 npm test
 ```
 
-Prüft die Berechnungen (Grundumsatz, Kalorienziel, Makros, BMI, MET, 1RM, Datumslogik) und die
-Konsistenz der Lebensmittel- und Übungsdaten.
+Prüft Berechnungen (Bedarf, Makros, BMI, MET, 1RM, Gerichte, Bereinigung der KI-Antworten),
+die Übernahme von Daten aus der ersten App-Version und die Konsistenz der Lebensmittel- und Übungsdaten.
 
 ## Aufbau
 
 | Datei | Inhalt |
 |---|---|
 | `index.html`, `styles.css` | App-Gerüst und Design (Hell/Dunkel) |
-| `js/app.js` | Oberfläche und Bedienung |
+| `js/app.js` | Start, Navigation, Ereignis-Verteilung |
+| `js/core.js` | Gemeinsamer Zustand, Ziele, Sheets, Meldungen |
+| `js/views/*.js` | Tagebuch, Hinzufügen, KI-Erkennung, Gerichte, Training, Statistik, Profil |
+| `js/ai.js` | KI-Anbindung (Claude API bzw. Claude-Vorschau) |
+| `js/photos.js` | Fotos verkleinern, Vorschaubilder in IndexedDB |
 | `js/calc.js` | Reine Rechenfunktionen (getestet) |
-| `js/foods.js` | Lebensmittel-Datenbank und Suche |
-| `js/exercises.js` | Übungen, Ausdauer-MET-Werte, Trainingspläne |
-| `js/store.js` | Speicherung im Browser (localStorage) |
-| `js/charts.js` | SVG-Diagramme ohne Bibliothek |
+| `js/foods.js`, `js/exercises.js` | Lebensmittel-, Übungs- und Plandaten |
+| `js/store.js` | Speicherung und Datenmigration |
+| `js/charts.js`, `js/icons.js` | SVG-Diagramme und Icons ohne Bibliothek |
 | `sw.js`, `manifest.webmanifest` | Offline-Betrieb und Installation als App |
 
-> Die Werte sind Schätzungen und ersetzen keine ärztliche oder ernährungsfachliche Beratung.
+> Alle Werte, auch die der KI, sind Schätzungen und ersetzen keine ärztliche oder
+> ernährungsfachliche Beratung.

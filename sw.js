@@ -1,5 +1,5 @@
 // Offline-Cache: App-Dateien zuerst aus dem Cache, dann im Hintergrund aktualisieren.
-const CACHE = 'kalorien-v1';
+const CACHE = 'kalorien-v2';
 const ASSETS = [
   './',
   'index.html',
@@ -7,11 +7,22 @@ const ASSETS = [
   'manifest.webmanifest',
   'icons/icon.svg',
   'js/app.js',
+  'js/ai.js',
   'js/calc.js',
   'js/charts.js',
+  'js/core.js',
   'js/exercises.js',
   'js/foods.js',
+  'js/icons.js',
+  'js/photos.js',
   'js/store.js',
+  'js/views/dishes.js',
+  'js/views/food.js',
+  'js/views/profile.js',
+  'js/views/scan.js',
+  'js/views/stats.js',
+  'js/views/today.js',
+  'js/views/training.js',
 ];
 
 self.addEventListener('install', (e) => {
@@ -29,7 +40,7 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
-  // Nur eigene Dateien und Schriften cachen; Open-Food-Facts-Anfragen gehen direkt ins Netz.
+  // Nur eigene Dateien und Schriften cachen; KI- und Open-Food-Facts-Anfragen gehen direkt ins Netz.
   const cacheable = url.origin === location.origin || url.host.endsWith('fonts.googleapis.com') || url.host.endsWith('fonts.gstatic.com');
   if (e.request.method !== 'GET' || !cacheable) return;
   e.respondWith(

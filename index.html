@@ -4,55 +4,48 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Kalorien &amp; Fitness</title>
-<meta name="description" content="Kalorien zählen, Training loggen und Fortschritt verfolgen – offline und privat auf deinem Gerät.">
-<meta name="theme-color" content="#0E7A5F">
+<meta name="description" content="Kalorien per Foto zählen, eigene Gerichte speichern, Training loggen – offline und privat auf deinem Gerät.">
+<meta name="theme-color" content="#0c3b2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <div class="app">
-  <header class="topbar">
-    <div class="brand">
-      <span class="brand-mark" aria-hidden="true"></span>
-      <span class="brand-name">Kalorien</span>
-    </div>
-    <div class="datenav" id="datenav">
-      <button class="icon-btn" data-action="day-prev" aria-label="Vorheriger Tag">‹</button>
-      <button class="date-label" id="date-label" data-action="day-today">Heute</button>
-      <button class="icon-btn" data-action="day-next" aria-label="Nächster Tag">›</button>
-    </div>
-  </header>
-
-  <main id="main">
-    <section class="view" id="view-today" aria-label="Tagebuch"></section>
-    <section class="view" id="view-training" aria-label="Training" hidden></section>
-    <section class="view" id="view-progress" aria-label="Fortschritt" hidden></section>
-    <section class="view" id="view-profile" aria-label="Profil" hidden></section>
-  </main>
-
-  <nav class="tabbar" aria-label="Hauptnavigation">
-    <button class="tab" data-tab="today" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11a8 8 0 1 0 16 0" /><path d="M12 3v8l4 3" /></svg><span>Tagebuch</span></button>
-    <button class="tab" data-tab="training"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10v4M6 7v10M18 7v10M21 10v4M6 12h12" /></svg><span>Training</span></button>
-    <button class="tab" data-tab="progress"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M6 15l4-5 4 3 5-7" /></svg><span>Fortschritt</span></button>
-    <button class="tab" data-tab="profile"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" /></svg><span>Profil</span></button>
-  </nav>
+  <main id="view" class="view view-in" aria-live="polite"></main>
 </div>
 
-<dialog id="food-dialog" class="sheet" aria-labelledby="food-title">
-  <div class="sheet-head">
-    <h2 id="food-title">Lebensmittel hinzufügen</h2>
-    <button class="icon-btn" data-action="close-dialog" aria-label="Schließen">✕</button>
+<nav class="tabbar" aria-label="Hauptnavigation">
+  <button class="tab" data-tab="today" aria-current="page"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/></svg><span>Heute</span></button>
+  <button class="tab" data-tab="dishes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M2 10h2M20 10h2M9 6c0-1 1-1 1-2M14 6c0-1 1-1 1-2"/></svg><span>Gerichte</span></button>
+  <div class="fab-slot">
+    <button class="fab" data-action="fab-camera" aria-label="Essen fotografieren und von der KI erkennen lassen">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+    </button>
   </div>
-  <div class="sheet-body" id="food-body"></div>
+  <button class="tab" data-tab="training"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10v4M6 7v10M18 7v10M21 10v4M6 12h12"/></svg><span>Training</span></button>
+  <button class="tab" data-tab="stats"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M7 16v-5M12 16V7M17 16v-8"/></svg><span>Statistik</span></button>
+</nav>
+
+<dialog id="sheet" class="sheet" aria-labelledby="sheet-title">
+  <div class="sheet-inner">
+    <div class="grabber" aria-hidden="true"></div>
+    <header class="sheet-head">
+      <h2 id="sheet-title"></h2>
+      <button class="icon-btn" data-action="close-sheet" aria-label="Schließen"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </header>
+    <div class="sheet-body" id="sheet-body"></div>
+  </div>
 </dialog>
 
-<dialog id="confirm-dialog" class="sheet sheet-small" aria-labelledby="confirm-text">
-  <form method="dialog" class="sheet-body confirm">
+<dialog id="confirm-dialog" class="confirm" aria-labelledby="confirm-text">
+  <form method="dialog">
     <p id="confirm-text"></p>
     <div class="row-end">
       <button class="btn btn-ghost" value="cancel">Abbrechen</button>
@@ -60,6 +53,13 @@
     </div>
   </form>
 </dialog>
+
+<dialog id="onboard" class="onboard" aria-label="Einrichtung">
+  <div id="onboard-body" class="onboard-inner"></div>
+</dialog>
+
+<input type="file" id="photo-input" accept="image/*" hidden>
+<input type="file" id="dish-photo-input" accept="image/*" hidden>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
