@@ -22,6 +22,8 @@ export function defaultState() {
     days: {}, // { 'YYYY-MM-DD': { meals: {...}, water, workouts } }
     weights: [], // [{ date, kg }]
     activeWorkout: null,
+    fasting: { start: null, goalH: 16, last: null, longestH: 0 },
+    badges: [], // bereits gefeierte Abzeichen
   };
 }
 
@@ -60,7 +62,8 @@ function migrateEntry(e) {
 /** Füllt fehlende Felder auf, damit ältere oder importierte Daten funktionieren. */
 export function migrate(data) {
   const base = defaultState();
-  const state = { ...base, ...data, settings: { ...base.settings, ...(data.settings || {}) }, version: 2 };
+  const state = { ...base, ...data, settings: { ...base.settings, ...(data.settings || {}) }, fasting: { ...base.fasting, ...(data.fasting || {}) }, version: 2 };
+  if (!Array.isArray(state.badges)) state.badges = [];
   for (const key of ['customFoods', 'recentFoods', 'favorites', 'dishes', 'weights']) {
     if (!Array.isArray(state[key])) state[key] = [];
   }

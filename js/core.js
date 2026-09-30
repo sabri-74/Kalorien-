@@ -4,6 +4,7 @@ import * as C from './calc.js';
 import * as S from './store.js';
 import { icon } from './icons.js';
 import { hydratePhotos } from './photos.js';
+import { foodEmoji } from './emoji.js';
 
 export const store = { state: S.load() };
 
@@ -48,14 +49,14 @@ export function amountLabel(e) {
   return `${fmt(e.amount)} g`;
 }
 
-// Farbige Initiale als Platzhalter-Bild für Lebensmittel ohne Foto
+// Emoji auf farbigem Grund als Bild für Lebensmittel ohne Foto
 const HUES = [152, 28, 210, 330, 45, 265, 190, 5];
-export function avatar(name, photo) {
+export function avatar(name, photo, category) {
   if (photo) return `<span class="thumb"><img data-photo="${esc(photo)}" alt=""></span>`;
   const n = String(name || '?').trim();
   let h = 0;
   for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return `<span class="thumb thumb-letter" style="--h:${HUES[h % HUES.length]}">${esc(n.charAt(0).toUpperCase())}</span>`;
+  return `<span class="thumb thumb-emoji" style="--h:${HUES[h % HUES.length]}" aria-hidden="true">${foodEmoji(n, category)}</span>`;
 }
 
 // ---------- Profil & Ziele ----------
@@ -239,5 +240,7 @@ export function mealOptions(selected) {
 export function defaultMeal() {
   return C.mealForHour(new Date().getHours());
 }
+
+export const dishTotalsCached = (d) => C.dishTotals(d);
 
 export { C, S, icon };

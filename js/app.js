@@ -5,6 +5,8 @@ import './views/scan.js';
 import './views/dishes.js';
 import './views/training.js';
 import './views/stats.js';
+import './views/aitools.js';
+import { checkBadges } from './views/rewards.js';
 import { openOnboarding } from './views/profile.js';
 import { stopScan } from './views/food.js';
 
@@ -26,7 +28,10 @@ function render() {
   root.dataset.view = ui.tab;
   views[ui.tab]?.(root);
   afterRender(root);
+  clearTimeout(badgeTimer);
+  badgeTimer = setTimeout(checkBadges, 1400);
 }
+let badgeTimer;
 setRenderer(render);
 
 function go(tab) {

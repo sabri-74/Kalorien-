@@ -4,9 +4,10 @@
 
 import {
   store, ui, C, S, $, esc, fmt, num, icon, actions, inputs, forms, openSheet, setSheet, closeSheet, commit, save, toast, haptic,
-  avatar, nutriGrid, mealOptions, defaultMeal, rememberFood, addEntry, amountLabel,
+  avatar, nutriGrid, mealOptions, defaultMeal, rememberFood, addEntry, amountLabel, currentWeight,
 } from '../core.js';
 import { FOODS, CATEGORIES, searchFoods } from '../foods.js';
+import { burnEquivalents } from '../insights.js';
 
 const fs = { meal: 'breakfast', query: '', cat: null, item: null, amount: 100, editing: null, online: [], onlineFor: '' };
 
@@ -32,10 +33,10 @@ function searchHtml() {
   return `
     <label class="search-box">${icon('search')}<input id="add-search" type="search" placeholder="Lebensmittel, Marke oder Gericht" autocomplete="off" enterkeyhint="search" aria-label="Suchen" value="${esc(fs.query)}"></label>
     <div class="tool-row">
-      <button class="tool" data-action="ai-open" data-mode="photo" data-meal="${fs.meal}">${icon('camera')}<span>Foto-KI</span></button>
-      <button class="tool" data-action="ai-open" data-mode="text" data-meal="${fs.meal}">${icon('sparkle')}<span>Beschreiben</span></button>
-      <button class="tool" data-action="add-barcode">${icon('barcode')}<span>Barcode</span></button>
-      <button class="tool" data-action="add-quick">${icon('bolt')}<span>Nur kcal</span></button>
+      <button class="tool t-orange" data-action="ai-open" data-mode="photo" data-meal="${fs.meal}"><i aria-hidden="true">📸</i><span>Foto-KI</span></button>
+      <button class="tool t-violet" data-action="ai-open" data-mode="text" data-meal="${fs.meal}"><i aria-hidden="true">✨</i><span>Beschreiben</span></button>
+      <button class="tool t-blue" data-action="add-barcode"><i aria-hidden="true">🏷️</i><span>Barcode</span></button>
+      <button class="tool t-green" data-action="add-quick"><i aria-hidden="true">⚡</i><span>Nur kcal</span></button>
     </div>
     <div id="add-results" class="add-results"></div>`;
 }
@@ -43,7 +44,7 @@ function searchHtml() {
 function foodRow(f) {
   const portion = f.portion && f.portionLabel ? ` · 1 ${esc(f.portionLabel)} = ${fmt(f.portion)} g` : '';
   return `<li><button class="row" data-action="pick-food" data-id="${esc(f.id)}">
-    ${avatar(f.name)}
+    ${avatar(f.name, null, f.category)}
     <span class="row-main"><b>${esc(f.name)}${isFav(f.id) ? ` <span class="fav-dot" aria-label="Favorit">${icon('star')}</span>` : ''}</b><small>${f.brand ? `${esc(f.brand)} · ` : ''}${fmt(f.kcal)} kcal / 100 g${portion}</small></span>
     <span class="row-add" aria-hidden="true">${icon('plus')}</span>
   </button></li>`;
@@ -68,19 +69,19 @@ function renderResults() {
 
   if (!q) {
     if (dishes.length) {
-      html += `<section><h4 class="eyebrow">Meine Gerichte</h4><div class="hscroll">${dishes.slice(0, 12).map(dishCardMini).join('')}</div></section>`;
+      html += `<section><h4 class="eyebrow">🍲 Meine Gerichte</h4><div class="hscroll">${dishes.slice(0, 12).map(dishCardMini).join('')}</div></section>`;
     }
-    if (s.favorites.length) html += `<section><h4 class="eyebrow">Favoriten</h4><ul class="rows">${s.favorites.map(foodRow).join('')}</ul></section>`;
+    if (s.favorites.length) html += `<section><h4 class="eyebrow">⭐ Favoriten</h4><ul class="rows">${s.favorites.map(foodRow).join('')}</ul></section>`;
     const recents = s.recentFoods.filter((r) => !isFav(r.id)).slice(0, 8);
-    if (recents.length) html += `<section><h4 class="eyebrow">Zuletzt verwendet</h4><ul class="rows">${recents.map(foodRow).join('')}</ul></section>`;
+    if (recents.length) html += `<section><h4 class="eyebrow">🕘 Zuletzt verwendet</h4><ul class="rows">${recents.map(foodRow).join('')}</ul></section>`;
     let list = allFoods();
     if (fs.cat) list = list.filter((f) => f.category === fs.cat);
-    html += `<section><h4 class="eyebrow">Stöbern</h4>
+    html += `<section><h4 class="eyebrow">🧺 Stöbern</h4>
       <div class="chips">${CATEGORIES.map((c) => `<button class="chip" data-action="add-cat" data-id="${esc(c)}" aria-pressed="${fs.cat === c}">${esc(c)}</button>`).join('')}</div>
       <ul class="rows">${list.slice(0, fs.cat ? 80 : 25).map(foodRow).join('')}</ul></section>`;
   } else {
     const dm = dishes.filter((d) => d.name.toLowerCase().includes(q.toLowerCase()));
-    if (dm.length) html += `<section><h4 class="eyebrow">Meine Gerichte</h4><div class="hscroll">${dm.map(dishCardMini).join('')}</div></section>`;
+    if (dm.length) html += `<section><h4 class="eyebrow">🍲 Meine Gerichte</h4><div class="hscroll">${dm.map(dishCardMini).join('')}</div></section>`;
     const list = searchFoods(allFoods(), q);
     html += list.length
       ? `<section><h4 class="eyebrow">${list.length} Treffer</h4><ul class="rows">${list.slice(0, 40).map(foodRow).join('')}</ul></section>`
@@ -123,7 +124,7 @@ function amountHtml() {
       ];
   return `
     <div class="pick-head">
-      ${avatar(it.name, it.photo)}
+      ${avatar(it.name, it.photo, it.category)}
       <div class="row-main"><b class="pick-name">${esc(it.name)}</b><small>${it.brand ? `${esc(it.brand)} · ` : ''}${
         it.unit === 'portion' ? `${fmt(it.base.kcal)} kcal pro Portion` : `${fmt(it.base.kcal)} kcal pro 100 g`
       }</small></div>
@@ -136,6 +137,7 @@ function amountHtml() {
       <button class="step-btn" data-action="step-amount" data-dir="1" aria-label="Mehr">${icon('plus')}</button>
     </div>
     <div id="amount-nutri">${nutriGrid(n, true)}</div>
+    <div class="burn" id="amount-burn">${burnHtml(n.kcal)}</div>
     <label class="field">Mahlzeit<select id="amount-meal">${mealOptions(fs.meal)}</select></label>
     <div class="sheet-actions">
       ${fs.editing
@@ -146,6 +148,14 @@ function amountHtml() {
     </div>`;
 }
 
+function burnHtml(kcal) {
+  if (kcal < 5) return '';
+  return `<p class="burn-title">🔥 So lange müsstest du dafür …</p>
+    <div class="burn-row">${burnEquivalents(kcal, currentWeight())
+      .map((b) => `<span class="burn-item"><i aria-hidden="true">${b.emoji}</i><b>${b.minutes} Min.</b><small>${b.label}</small></span>`)
+      .join('')}</div>`;
+}
+
 function showAmount() {
   setSheet(fs.editing ? 'Eintrag bearbeiten' : `${mealLabel(fs.meal)} hinzufügen`, amountHtml());
 }
@@ -153,15 +163,21 @@ function showAmount() {
 function refreshAmount() {
   const n = C.scaleBase(fs.item.base, fs.amount, fs.item.unit);
   $('#amount-nutri').innerHTML = nutriGrid(n, true);
+  $('#amount-burn').innerHTML = burnHtml(n.kcal);
   const btn = $('#amount-save');
   if (btn) btn.textContent = `Hinzufügen · ${fmt(n.kcal)} kcal`;
   document.querySelectorAll('[data-action="set-amount"]').forEach((c) => c.setAttribute('aria-pressed', Number(c.dataset.v) === fs.amount));
 }
 
-export function pickFood(f) {
-  fs.item = { foodId: f.id, name: f.name, brand: f.brand || '', unit: 'g', portion: f.portion, portionLabel: f.portionLabel, base: { kcal: f.kcal, protein: f.protein, carbs: f.carbs, fat: f.fat }, food: f };
+export function pickFood(f, meal) {
+  if (meal) {
+    fs.meal = meal;
+    fs.editing = null;
+  }
+  fs.item = { foodId: f.id, name: f.name, brand: f.brand || '', category: f.category, unit: 'g', portion: f.portion, portionLabel: f.portionLabel, base: { kcal: f.kcal, protein: f.protein, carbs: f.carbs, fat: f.fat }, food: f };
   fs.amount = f.portion || 100;
-  showAmount();
+  if (document.querySelector('#sheet').open) showAmount();
+  else openSheet(`${mealLabel(fs.meal)} hinzufügen`, amountHtml());
 }
 
 export function pickDish(dish, meal) {

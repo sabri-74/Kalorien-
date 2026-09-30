@@ -57,7 +57,7 @@ views.dishes = (root) => {
     .sort((a, b) => (b.lastUsed || b.createdAt || 0) - (a.lastUsed || a.createdAt || 0));
   root.innerHTML = `
     <header class="page-head">
-      <div><p class="eyebrow">Rezepte & Lieblingsessen</p><h1>Gerichte</h1></div>
+      <div><p class="eyebrow">🍲 Rezepte & Lieblingsessen</p><h1>Gerichte</h1></div>
       <button class="btn btn-primary" data-action="dish-new">${icon('plus')}Neu</button>
     </header>
     ${
@@ -65,18 +65,18 @@ views.dishes = (root) => {
         ? `${s.dishes.length > 4 ? `<label class="search-box">${icon('search')}<input id="dish-search" type="search" placeholder="Gericht suchen" value="${esc(dishQuery)}" aria-label="Gericht suchen"></label>` : ''}
            <div class="dish-list">${list.map(dishCard).join('') || '<p class="empty-note">Kein Gericht gefunden.</p>'}</div>`
         : `<section class="empty-hero">
-            <span class="empty-icon">${icon('pot')}</span>
+            <span class="empty-icon" aria-hidden="true">🍲</span>
             <h2>Einmal anlegen, immer wieder eintragen</h2>
             <p>Speichere Gerichte, die du öfter isst – dein Frühstück, Omas Suppe oder die Kantinen-Bowl. Danach reicht ein Tipp.</p>
             <div class="ways">
-              <button class="way" data-action="dish-new">${icon('pen')}<b>Selbst zusammenstellen</b><small>Zutaten aus der Datenbank wählen</small></button>
-              <button class="way" data-action="ai-open" data-mode="photo">${icon('camera')}<b>Per Foto erkennen</b><small>Beim Eintragen „Als Gericht speichern“ ankreuzen</small></button>
-              <button class="way" data-action="goto" data-tab="today">${icon('save')}<b>Aus dem Tagebuch</b><small>Bei einer Mahlzeit „Als Gericht speichern“</small></button>
+              <button class="way" data-action="dish-new"><i aria-hidden="true">✍️</i><b>Selbst zusammenstellen</b><small>Zutaten aus der Datenbank wählen</small></button>
+              <button class="way" data-action="ai-open" data-mode="photo"><i aria-hidden="true">📸</i><b>Per Foto erkennen</b><small>Beim Eintragen „Als Gericht speichern“ ankreuzen</small></button>
+              <button class="way" data-action="fridge-chef"><i aria-hidden="true">🧊</i><b>Kühlschrank-Chef</b><small>Die KI erfindet ein Rezept aus deinen Zutaten</small></button>
             </div>
           </section>`
     }
     <section>
-      <h2 class="section-title">Vorlagen</h2>
+      <h2 class="section-title">✨ Vorlagen</h2>
       <p class="hint">Tipp auf eine Vorlage, pass sie an und speichere sie als dein Gericht.</p>
       <div class="hscroll">${TEMPLATES.map((t, i) => {
         const tot = C.dishTotals(templateDish(t));
@@ -106,7 +106,7 @@ let pickQuery = '';
 let pickItem = null;
 
 function openEditor(d) {
-  draft = { id: d.id || null, name: d.name || '', servings: d.servings || 1, photo: d.photo || null, photoData: null, ingredients: (d.ingredients || []).map((i) => ({ ...i })) };
+  draft = { id: d.id || null, name: d.name || '', servings: d.servings || 1, photo: d.photo || null, photoData: null, steps: d.steps || [], ingredients: (d.ingredients || []).map((i) => ({ ...i })) };
   openSheet(draft.id ? 'Gericht bearbeiten' : 'Neues Gericht', editorHtml(), { wide: true });
 }
 
@@ -148,6 +148,7 @@ function editorHtml() {
       }
       <button class="btn btn-soft btn-block" data-action="ing-add">${icon('plus')}Zutat hinzufügen</button>
     </div>
+    ${draft.steps.length ? `<section><h4 class="eyebrow">👩‍🍳 Zubereitung</h4><ol class="steps">${draft.steps.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></section>` : ''}
     <div class="dish-sum">
       <div class="dish-sum-head"><b>Pro Portion</b><span>Gesamt ${fmt(t.total.kcal)} kcal</span></div>
       <div id="dish-nutri">${nutriGrid(t.perServing, true)}</div>
@@ -243,7 +244,7 @@ actions['dish-save'] = async (d) => {
     photo = `p-${S.uid()}`;
     await putPhoto(photo, draft.photoData);
   }
-  const data = { name: draft.name.trim(), servings: draft.servings, photo, ingredients: draft.ingredients };
+  const data = { name: draft.name.trim(), servings: draft.servings, photo, ingredients: draft.ingredients, steps: draft.steps };
   let dish;
   if (draft.id) {
     dish = s.dishes.find((x) => x.id === draft.id);

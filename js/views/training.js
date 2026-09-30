@@ -2,6 +2,8 @@ import {
   store, ui, C, S, $, esc, fmt, num, icon, views, actions, inputs, forms, commit, save, toast, haptic, confirmDialog, currentWeight, dateLabel,
 } from '../core.js';
 import { EXERCISES, CARDIO, PLANS, MUSCLES, STRENGTH_MET, exerciseById } from '../exercises.js';
+import { CARDIO_EMOJI, MUSCLE_EMOJI } from '../emoji.js';
+import { confetti } from '../fx.js';
 
 const REST_SECONDS = 90;
 const tr = { muscle: null, rest: null };
@@ -125,18 +127,18 @@ views.training = (root) => {
 
   root.innerHTML = `
     <header class="page-head">
-      <div><p class="eyebrow">${esc(dateLabel(ui.date, true))}</p><h1>Training</h1></div>
+      <div><p class="eyebrow">💪 ${esc(dateLabel(ui.date, true))}</p><h1>Training</h1></div>
     </header>
     <div class="tiles tiles-3">
-      <div class="tile"><span class="tile-label">Diese Woche</span><b class="tile-value">${week.length}</b><small>Einheiten</small></div>
-      <div class="tile"><span class="tile-label">Aktiv</span><b class="tile-value">${fmt(weekMin)}</b><small>Minuten</small></div>
-      <div class="tile"><span class="tile-label">Verbrannt</span><b class="tile-value">${fmt(weekKcal)}</b><small>kcal</small></div>
+      <div class="tile tile-orange"><span class="tile-label"><i aria-hidden="true">📅</i>Woche</span><b class="tile-value">${week.length}</b><small>Einheiten</small></div>
+      <div class="tile tile-green"><span class="tile-label"><i aria-hidden="true">⏱️</i>Aktiv</span><b class="tile-value">${fmt(weekMin)}</b><small>Minuten</small></div>
+      <div class="tile tile-pink"><span class="tile-label"><i aria-hidden="true">🔥</i>Kcal</span><b class="tile-value">${fmt(weekKcal)}</b><small>kcal</small></div>
     </div>
 
     <article class="card">
-      <h2 class="card-title">${icon('flame')}Ausdauer eintragen</h2>
+      <h2 class="card-title"><span class="meal-emoji" aria-hidden="true">🏃</span>Ausdauer eintragen</h2>
       <form class="stack" data-form="cardio">
-        <label class="field">Aktivität<select id="cardio-act">${CARDIO.map((a) => `<option value="${a.id}">${esc(a.name)}</option>`).join('')}</select></label>
+        <label class="field">Aktivität<select id="cardio-act">${CARDIO.map((a) => `<option value="${a.id}">${CARDIO_EMOJI[a.id] || '🏃'} ${esc(a.name)}</option>`).join('')}</select></label>
         <div class="chips">${[15, 30, 45, 60].map((m) => `<button type="button" class="chip" data-action="cardio-min" data-v="${m}">${m} Min.</button>`).join('')}</div>
         <div class="grid-2 align-end">
           <label class="field">Dauer (Min.)<input id="cardio-min" type="number" inputmode="numeric" min="1" value="30"></label>
@@ -147,7 +149,7 @@ views.training = (root) => {
     </article>
 
     <article class="card">
-      <h2 class="card-title">${icon('dumbbell')}Krafttraining</h2>
+      <h2 class="card-title"><span class="meal-emoji" aria-hidden="true">🏋️</span>Krafttraining</h2>
       <p class="hint">Wähl einen Plan oder starte frei. Gewichte vom letzten Mal werden vorgeschlagen, nach jedem Satz läuft ein Pausentimer.</p>
       <div class="plans">
         ${PLANS.map(
@@ -165,7 +167,7 @@ views.training = (root) => {
       day.workouts.length
         ? `<article class="card"><h3>${esc(dateLabel(ui.date))}</h3><ul class="rows">${day.workouts
             .map(
-              (w) => `<li class="row"><span class="thumb thumb-icon">${icon(w.type === 'strength' ? 'dumbbell' : 'flame')}</span>
+              (w) => `<li class="row"><span class="thumb thumb-emoji" style="--h:25" aria-hidden="true">${w.type === 'strength' ? '🏋️' : CARDIO_EMOJI[w.activity] || '🏃'}</span>
               <span class="row-main"><b>${esc(w.name)}</b><small>${fmt(w.minutes)} Min.${w.type === 'strength' ? ` · ${fmt(C.volume(w.exercises.flatMap((e) => e.sets)))} kg Volumen` : ''}</small></span>
               <span class="row-end">${fmt(w.kcal)}<small>kcal</small></span>
               <button class="icon-btn" data-action="del-workout" data-id="${w.id}" aria-label="${esc(w.name)} löschen">${icon('trash')}</button></li>`,
@@ -178,7 +180,7 @@ views.training = (root) => {
       history.length
         ? `<article class="card"><h3>Letzte Einheiten</h3><ul class="rows">${history
             .map(
-              (h) => `<li class="row"><span class="thumb thumb-icon">${icon(h.type === 'strength' ? 'dumbbell' : 'flame')}</span>
+              (h) => `<li class="row"><span class="thumb thumb-emoji" style="--h:25" aria-hidden="true">${h.type === 'strength' ? '🏋️' : CARDIO_EMOJI[h.activity] || '🏃'}</span>
               <span class="row-main"><b>${esc(h.name)}</b><small>${dateLabel(h.date)} · ${fmt(h.minutes)} Min.</small></span>
               <span class="row-end">${fmt(h.kcal)}<small>kcal</small></span></li>`,
             )
@@ -190,7 +192,7 @@ views.training = (root) => {
       <h3>Übungen</h3>
       <div class="chips">
         <button class="chip" data-action="muscle" data-id="" aria-pressed="${!tr.muscle}">Alle</button>
-        ${MUSCLES.map((m) => `<button class="chip" data-action="muscle" data-id="${m}" aria-pressed="${tr.muscle === m}">${m}</button>`).join('')}
+        ${MUSCLES.map((m) => `<button class="chip" data-action="muscle" data-id="${m}" aria-pressed="${tr.muscle === m}">${MUSCLE_EMOJI[m] || ''} ${m}</button>`).join('')}
       </div>
       <ul class="rows">${lib
         .map(
@@ -221,9 +223,9 @@ forms.cardio = () => {
     toast('Bitte eine Dauer eingeben.');
     return;
   }
-  S.getDay(store.state, ui.date).workouts.push({ id: S.uid(), type: 'cardio', name: act.name, minutes, kcal: C.metCalories(act.met, currentWeight(), minutes) });
+  S.getDay(store.state, ui.date).workouts.push({ id: S.uid(), type: 'cardio', activity: act.id, name: act.name, minutes, kcal: C.metCalories(act.met, currentWeight(), minutes) });
   haptic(18);
-  toast(`${act.name} eingetragen`);
+  toast(`${CARDIO_EMOJI[act.id] || '🏃'} ${act.name} eingetragen`);
   commit();
 };
 
@@ -335,7 +337,8 @@ actions['wo-finish'] = () => {
   store.state.activeWorkout = null;
   tr.rest = null;
   haptic(30);
-  toast('Training gespeichert. Stark!');
+  confetti({ emojis: ['💪', '🏋️', '🔥'], count: 70 });
+  toast('💪 Training gespeichert. Stark!');
   commit();
 };
 

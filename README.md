@@ -6,6 +6,21 @@ Deine Daten bleiben auf deinem Gerät.
 
 ## Funktionen
 
+**Neu in dieser Version** 🎉
+- 🎨 Komplett neues, farbenfrohes Design: Sonnenuntergangs-Verlauf, Emojis für jedes Lebensmittel,
+  jede Mahlzeit mit eigener Farbe, schwebende Farbblasen, Hell- und Dunkelmodus.
+- ✨ Animationen: hochzählende Zahlen, sich füllende Ringe, Wasserflasche mit Welle, Konfetti bei Erfolgen.
+- 🥑 **Avo, dein Buddy**: gibt Tipps, die zu deinem Tag passen (Frühstück, Eiweiß, Wasser, Bewegung …).
+- 🏆 **Tages-Score** (0–100) aus Kalorien, Eiweiß, Wasser, Bewegung und Einträgen – mit Aufschlüsselung.
+- 🎯 **Passt noch rein**: Vorschläge aus Datenbank und eigenen Gerichten, die in dein Restbudget passen.
+- 🔥 **Verbrenn-Rechner**: Zu jedem Essen siehst du, wie lange du dafür gehen, radeln, joggen oder schwimmen müsstest.
+- 📋 **Speisekarten-Scanner (KI)**: Karte im Restaurant fotografieren, die KI empfiehlt, was in dein Budget passt.
+- 🧊 **Kühlschrank-Chef (KI)**: Kühlschrank fotografieren oder Zutaten aufzählen, die KI erfindet ein passendes Rezept.
+- 🔮 **Ziel-Prognose**: Aus deinem Gewichtstrend berechnet die App, wann du dein Zielgewicht erreichst.
+- 🏅 **14 Abzeichen** zum Sammeln, z. B. Hydro-Held, Eiweiß-Champion, Traumtag.
+- ⏱️ **Intervallfasten** mit Live-Timer (12:12 bis 18:6).
+- 😊 **Stimmungs-Check**: Die Statistik zeigt, wie dein Essen mit deinem Befinden zusammenhängt.
+
 **KI-Kalorienerkennung**
 - Auf den orangefarbenen Kamera-Knopf tippen, das Essen fotografieren, fertig: Die KI erkennt jede
   Komponente (Beilage, Soße, Getränk …), schätzt die Menge in Gramm und die Nährwerte.
@@ -98,6 +113,8 @@ die Übernahme von Daten aus der ersten App-Version und die Konsistenz der Leben
 | `js/foods.js`, `js/exercises.js` | Lebensmittel-, Übungs- und Plandaten |
 | `js/store.js` | Speicherung und Datenmigration |
 | `js/charts.js`, `js/icons.js` | SVG-Diagramme und Icons ohne Bibliothek |
+| `js/insights.js` | Tages-Score, Buddy-Tipps, Vorschläge, Prognose, Abzeichen (getestet) |
+| `js/emoji.js`, `js/fx.js` | Emoji-Zuordnung, Konfetti und Animationen |
 | `sw.js`, `manifest.webmanifest` | Offline-Betrieb und Installation als App |
 
 > Alle Werte, auch die der KI, sind Schätzungen und ersetzen keine ärztliche oder

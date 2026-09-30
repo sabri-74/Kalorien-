@@ -229,3 +229,159 @@ Gib 3 bis 4 konkrete, motivierende Tipps auf Deutsch (Du-Form). Jeder Tipp eine 
   onText?.(text);
   return text;
 }
+
+// ---------- Allgemeine JSON-Anfrage ----------
+
+async function askJson({ apiKey, prompt, schema, image, signal }) {
+  const status = await aiStatus(apiKey);
+  if (!status.provider) throw new AiError('no_provider');
+  if (status.provider === 'claude') {
+    const sample = await getSample();
+    try {
+      return await sample.json(prompt, { images: image && status.images ? [image] : undefined, signal });
+    } catch (e) {
+      throw mapSampleError(e);
+    }
+  }
+  const content = [];
+  if (image) content.push({ type: 'image', source: { type: 'base64', media_type: image.type || 'image/jpeg', data: await blobToBase64(image) } });
+  content.push({ type: 'text', text: prompt });
+  return parseJson(await callApi(apiKey, content, { schema, signal }));
+}
+
+const num = (v, max) => {
+  const n = Number(String(v ?? '').replace(',', '.'));
+  return Number.isFinite(n) ? Math.min(max, Math.max(0, Math.round(n * 10) / 10)) : 0;
+};
+const str = (v, len) => String(v ?? '').trim().slice(0, len);
+
+// ---------- Speisekarten-Scanner ----------
+
+const MENU_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['picks', 'tip'],
+  properties: {
+    tip: { type: 'string' },
+    picks: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['emoji', 'name', 'kcal', 'protein', 'carbs', 'fat', 'why', 'fits'],
+        properties: {
+          emoji: { type: 'string' },
+          name: { type: 'string' },
+          kcal: { type: 'number' },
+          protein: { type: 'number' },
+          carbs: { type: 'number' },
+          fat: { type: 'number' },
+          why: { type: 'string' },
+          fits: { type: 'boolean' },
+        },
+      },
+    },
+  },
+};
+
+/**
+ * Empfiehlt Gerichte von einer Speisekarte passend zum Restbudget.
+ * Liefert { tip, picks: [{ emoji, name, kcal, protein, carbs, fat, why, fits }] }.
+ */
+export async function analyzeMenu({ apiKey, image, text, budget, signal }) {
+  const prompt = `Du bist eine Ernährungsberaterin und hilfst beim Bestellen im Restaurant.
+Die Person hat heute noch ${Math.round(budget.kcal)} kcal übrig und braucht noch etwa ${Math.round(budget.protein)} g Eiweiß. Ihr Ziel: ${budget.goal}.
+${image ? 'Auf dem Foto ist eine Speisekarte.' : ''}${text ? ` Speisekarte bzw. Auswahl: "${text}"` : ''}
+Wähle die 3 bis 5 besten Gerichte von dieser Karte aus (nur Gerichte, die wirklich draufstehen). Schätze pro übliche Restaurantportion kcal, Eiweiß, Kohlenhydrate und Fett in Gramm. Sortiere die beste Wahl nach oben.
+"why": ein kurzer, freundlicher Satz auf Deutsch, warum es passt, gern mit einem Bestelltipp (z. B. "Dressing extra bestellen").
+"fits": true, wenn die kcal ins Restbudget passen.
+"emoji": ein passendes Essens-Emoji.
+"tip": ein allgemeiner Tipp für diesen Restaurantbesuch in einem Satz.
+Ist keine Speisekarte zu erkennen, gib eine leere picks-Liste und erkläre es in tip.
+Antworte nur mit JSON: {"tip": "…", "picks": [{"emoji": "🥗", "name": "…", "kcal": 520, "protein": 38, "carbs": 30, "fat": 22, "why": "…", "fits": true}]}`;
+  const raw = await askJson({ apiKey, prompt, schema: MENU_SCHEMA, image, signal });
+  const picks = (Array.isArray(raw?.picks) ? raw.picks : [])
+    .map((p) => ({
+      emoji: str(p.emoji, 8) || '🍽️',
+      name: str(p.name, 80),
+      kcal: num(p.kcal, 5000),
+      protein: num(p.protein, 300),
+      carbs: num(p.carbs, 600),
+      fat: num(p.fat, 300),
+      why: str(p.why, 200),
+      fits: !!p.fits,
+    }))
+    .filter((p) => p.name && p.kcal > 0)
+    .slice(0, 6);
+  if (!picks.length && !raw?.tip) throw new AiError('invalid');
+  return { tip: str(raw?.tip, 240), picks };
+}
+
+// ---------- Kühlschrank-Chef ----------
+
+const RECIPE_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['emoji', 'name', 'minutes', 'servings', 'ingredients', 'steps', 'tip'],
+  properties: {
+    emoji: { type: 'string' },
+    name: { type: 'string' },
+    minutes: { type: 'number' },
+    servings: { type: 'number' },
+    tip: { type: 'string' },
+    steps: { type: 'array', items: { type: 'string' } },
+    ingredients: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['name', 'grams', 'kcal', 'protein', 'carbs', 'fat'],
+        properties: {
+          name: { type: 'string' },
+          grams: { type: 'number' },
+          kcal: { type: 'number' },
+          protein: { type: 'number' },
+          carbs: { type: 'number' },
+          fat: { type: 'number' },
+        },
+      },
+    },
+  },
+};
+
+/**
+ * Schlägt aus vorhandenen Zutaten ein Rezept vor, das ins Budget passt.
+ * Liefert { emoji, name, minutes, servings, ingredients: [{ name, amount, base }], steps, tip }.
+ */
+export async function fridgeChef({ apiKey, image, text, wish, budget, signal }) {
+  const prompt = `Du bist eine kreative Köchin mit Ernährungswissen.
+${image ? 'Auf dem Foto siehst du, was im Kühlschrank bzw. in der Küche vorhanden ist.' : ''}${text ? ` Vorhandene Zutaten: "${text}".` : ''}
+${wish ? `Wunsch: "${wish}".` : ''}
+Die Person hat heute noch ${Math.round(budget.kcal)} kcal übrig und braucht noch ${Math.round(budget.protein)} g Eiweiß. Ziel: ${budget.goal}.
+Schlage EIN leckeres, einfaches Rezept für 1 Portion vor, das hauptsächlich die vorhandenen Zutaten nutzt (Grundzutaten wie Salz, Pfeffer, Gewürze, wenig Öl dürfen dazu). Eine Portion soll möglichst ins Restbudget passen und eiweißreich sein.
+Gib für jede Zutat die Menge in Gramm und die Nährwerte FÜR DIESE MENGE an. 3 bis 7 kurze Kochschritte auf Deutsch. "minutes" = Zubereitungszeit. "tip" = ein Satz mit einem Profi-Tipp.
+Antworte nur mit JSON: {"emoji": "🍳", "name": "…", "minutes": 15, "servings": 1, "ingredients": [{"name": "…", "grams": 100, "kcal": 150, "protein": 12, "carbs": 5, "fat": 9}], "steps": ["…"], "tip": "…"}`;
+  const raw = await askJson({ apiKey, prompt, schema: RECIPE_SCHEMA, image, signal });
+  const ingredients = (Array.isArray(raw?.ingredients) ? raw.ingredients : [])
+    .map((i) => {
+      const grams = num(i.grams, 3000);
+      if (!grams || !str(i.name, 80)) return null;
+      const f = 100 / grams;
+      return {
+        name: str(i.name, 80),
+        amount: grams,
+        base: { kcal: num(i.kcal, 5000) * f, protein: num(i.protein, 300) * f, carbs: num(i.carbs, 600) * f, fat: num(i.fat, 300) * f },
+      };
+    })
+    .filter(Boolean);
+  if (!ingredients.length) throw new AiError('invalid');
+  return {
+    emoji: str(raw.emoji, 8) || '🍳',
+    name: str(raw.name, 80) || 'Kühlschrank-Rezept',
+    minutes: num(raw.minutes, 240) || 15,
+    servings: Math.max(1, Math.round(num(raw.servings, 12)) || 1),
+    ingredients,
+    steps: (Array.isArray(raw.steps) ? raw.steps : []).map((s) => str(s, 300)).filter(Boolean).slice(0, 10),
+    tip: str(raw.tip, 240),
+  };
+}

@@ -5,6 +5,7 @@ import {
 import { FOODS } from '../foods.js';
 import { STRENGTH_MET } from '../exercises.js';
 import { aiStatus, AI_MODEL } from '../ai.js';
+import { confetti } from '../fx.js';
 
 const opt = (obj, val) => Object.entries(obj).map(([k, v]) => `<option value="${k}" ${k === val ? 'selected' : ''}>${esc(v.label)}</option>`).join('');
 
@@ -24,7 +25,7 @@ views.profile = (root) => {
     <article class="card" id="profile-results">${resultsHtml()}</article>
 
     <article class="card">
-      <h3>Deine Angaben</h3>
+      <h3>🧍 Deine Angaben</h3>
       <form class="stack" data-form="profile">
         <label class="field">Name<input id="p-name" value="${esc(p.name)}" autocomplete="given-name" placeholder="optional"></label>
         <div class="grid-2">
@@ -44,7 +45,7 @@ views.profile = (root) => {
     </article>
 
     <article class="card" id="ai-settings">
-      <h3>${icon('sparkle')}KI-Erkennung</h3>
+      <h3>✨ KI-Erkennung</h3>
       <p class="hint" id="ai-state">Prüfe Verbindung …</p>
       <form class="stack" data-form="api-key">
         <label class="field">Claude-API-Schlüssel
@@ -59,14 +60,14 @@ views.profile = (root) => {
     </article>
 
     <article class="card">
-      <h3>Darstellung</h3>
+      <h3>🎨 Darstellung</h3>
       <div class="seg" role="group" aria-label="Farbschema">
-        ${[['system', 'Automatisch'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([id, l]) => `<button data-action="theme" data-id="${id}" aria-pressed="${s.settings.theme === id}">${l}</button>`).join('')}
+        ${[['system', '🌗 Auto'], ['light', '☀️ Hell'], ['dark', '🌙 Dunkel']].map(([id, l]) => `<button data-action="theme" data-id="${id}" aria-pressed="${s.settings.theme === id}">${l}</button>`).join('')}
       </div>
     </article>
 
     <article class="card">
-      <h3>Deine Daten</h3>
+      <h3>💾 Deine Daten</h3>
       <p class="hint">Alles bleibt auf diesem Gerät. Sichere deine Daten ab und zu, z. B. vor einem Handywechsel. Fotos sind in der Sicherung nicht enthalten.</p>
       <div class="btn-grid">
         <button class="btn btn-soft" data-action="export">${icon('save')}Sicherung speichern</button>
@@ -86,7 +87,7 @@ function resultsHtml() {
   const p = { ...profile(), weight: currentWeight() };
   const goal = C.GOALS[p.goal];
   return `
-    <h3>Dein Tagesbedarf</h3>
+    <h3>🔥 Dein Tagesbedarf</h3>
     <div class="budget-eq">
       <div><span>Grundumsatz</span><b>${fmt(t.bmr)}</b></div>
       <div><span>+ Alltag</span><b>${fmt(t.tdee - t.bmr)}</b></div>
@@ -297,29 +298,30 @@ function renderOnboarding() {
     body = `
       <div class="ob-hero">
         <span class="ob-logo" aria-hidden="true"></span>
-        <h1>Kalorien zählen, ohne Zählerei</h1>
+        <h1>Kalorien zählen, ohne Zählerei <span aria-hidden="true">🥑</span></h1>
         <p>Fotografier dein Essen, die KI erkennt Zutaten und Kalorien. Deine Lieblingsgerichte trägst du mit einem Tipp ein.</p>
         <ul class="ob-points">
-          <li>${icon('camera')}<span><b>Foto-Erkennung</b> für Teller, Snacks und Restaurantessen</span></li>
-          <li>${icon('pot')}<span><b>Eigene Gerichte</b> speichern und wiederverwenden</span></li>
-          <li>${icon('dumbbell')}<span><b>Training & Fortschritt</b> mit Plänen und Diagrammen</span></li>
+          <li style="--i:0"><i aria-hidden="true">📸</i><span><b>Foto-KI</b> erkennt Teller, Snacks und Restaurantessen</span></li>
+          <li style="--i:1"><i aria-hidden="true">📋</i><span><b>Speisekarten-Scanner</b> & <b>Kühlschrank-Chef</b></span></li>
+          <li style="--i:2"><i aria-hidden="true">🍲</i><span><b>Eigene Gerichte</b> mit einem Tipp wieder eintragen</span></li>
+          <li style="--i:3"><i aria-hidden="true">🏅</i><span><b>Abzeichen, Tages-Score & Avo</b>, dein Buddy</span></li>
         </ul>
       </div>`;
-    next = 'Los geht’s';
+    next = 'Los geht’s 🚀';
   } else if (ob.step === 1) {
-    body = `<h2>Was ist dein Ziel?</h2>${choiceCards('goal', [
-      ['lose_fast', 'Schnell abnehmen', 'ca. 0,75 kg pro Woche'],
-      ['lose', 'Abnehmen', 'ca. 0,5 kg pro Woche'],
-      ['maintain', 'Gewicht halten', 'fit und ausgewogen essen'],
-      ['gain', 'Muskeln aufbauen', 'leichter Überschuss, viel Eiweiß'],
+    body = `<h2>🎯 Was ist dein Ziel?</h2>${choiceCards('goal', [
+      ['lose_fast', '⚡ Schnell abnehmen', 'ca. 0,75 kg pro Woche'],
+      ['lose', '📉 Abnehmen', 'ca. 0,5 kg pro Woche'],
+      ['maintain', '⚖️ Gewicht halten', 'fit und ausgewogen essen'],
+      ['gain', '💪 Muskeln aufbauen', 'leichter Überschuss, viel Eiweiß'],
     ], d.goal)}`;
   } else if (ob.step === 2) {
-    body = `<h2>Ein paar Angaben zu dir</h2>
+    body = `<h2>🧍 Ein paar Angaben zu dir</h2>
       <form class="stack" data-form="ob-body" id="ob-body">
         <label class="field">Wie heißt du?<input id="ob-name" value="${esc(d.name)}" placeholder="Vorname (optional)" autocomplete="given-name"></label>
         <div class="seg seg-block" role="radiogroup" aria-label="Geschlecht">
-          <button type="button" role="radio" data-action="ob-choose" data-name="sex" data-id="female" aria-pressed="${d.sex === 'female'}">Weiblich</button>
-          <button type="button" role="radio" data-action="ob-choose" data-name="sex" data-id="male" aria-pressed="${d.sex === 'male'}">Männlich</button>
+          <button type="button" role="radio" data-action="ob-choose" data-name="sex" data-id="female" aria-pressed="${d.sex === 'female'}">👩 Weiblich</button>
+          <button type="button" role="radio" data-action="ob-choose" data-name="sex" data-id="male" aria-pressed="${d.sex === 'male'}">👨 Männlich</button>
         </div>
         <div class="grid-3">
           <label class="field">Alter<input id="ob-age" type="number" inputmode="numeric" min="14" max="100" value="${d.age}"></label>
@@ -329,15 +331,17 @@ function renderOnboarding() {
         ${d.goal !== 'maintain' ? `<label class="field">Zielgewicht kg<input id="ob-target" type="number" inputmode="decimal" step="0.1" min="30" max="300" value="${d.targetWeight || ''}" placeholder="optional"></label>` : ''}
       </form>`;
   } else if (ob.step === 3) {
-    body = `<h2>Wie aktiv bist du im Alltag?</h2>${choiceCards('activity', Object.entries(C.ACTIVITY_LEVELS).map(([id, v]) => {
+    body = `<h2>🏃 Wie aktiv bist du im Alltag?</h2>${choiceCards('activity', Object.entries(C.ACTIVITY_LEVELS).map(([id, v]) => {
       const [title, sub] = v.label.split(' (');
-      return [id, title, sub ? sub.replace(')', '') : ''];
+      const e = { sedentary: '🛋️', light: '🚶', moderate: '🚴', active: '🏃', athlete: '🏋️' }[id];
+      return [id, `${e} ${title}`, sub ? sub.replace(')', '') : ''];
     }), d.activity)}`;
   } else {
     const kcal = C.calorieTarget(d);
     const m = C.macroTargets(kcal, d.weight, d.goal);
     body = `
       <div class="ob-result">
+        <span class="ob-party" aria-hidden="true">🎉</span>
         <p class="eyebrow">Dein Tagesziel</p>
         <b class="ob-kcal">${fmt(kcal)}</b><span>kcal pro Tag</span>
         <div class="nutri">
@@ -348,7 +352,7 @@ function renderOnboarding() {
         </div>
         <p class="hint">Grundumsatz ${fmt(C.bmr(d))} kcal, mit Alltag ${fmt(C.tdee(d))} kcal. Du kannst alles später im Profil ändern.</p>
       </div>`;
-    next = 'Fertig';
+    next = 'Fertig – los geht’s! 🎉';
   }
   $('#onboard-body').innerHTML = `
     <div class="ob-top">
@@ -409,7 +413,8 @@ actions['ob-next'] = () => {
   s.settings.customKcal = null;
   $('#onboard').close();
   ui.tab = 'today';
-  toast(first ? 'Alles bereit! Trag deine erste Mahlzeit ein.' : 'Ziele aktualisiert');
+  confetti();
+  toast(first ? '🎉 Alles bereit! Trag deine erste Mahlzeit ein.' : '🎯 Ziele aktualisiert');
   commit();
 };
 forms['ob-body'] = () => actions['ob-next']();
