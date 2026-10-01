@@ -57,7 +57,9 @@ export function normalizeMealPlan(raw) {
         carbs: num(m?.carbs, 500),
         fat: num(m?.fat, 300),
         price: num(m?.price, 50),
-        ingredients: (Array.isArray(m?.ingredients) ? m.ingredients : []).map((i) => ({ name: str(i?.name, 60), amount: str(i?.amount, 30) })).filter((i) => i.name),
+        ingredients: (Array.isArray(m?.ingredients) ? m.ingredients : [])
+          .map((i) => ({ name: str(i?.name, 60), amount: str(i?.amount, 30), buy: str(i?.buy, 70), store: storeId(i?.store), price: num(i?.price, 100), section: sectionId(i?.section) }))
+          .filter((i) => i.name),
         steps: (Array.isArray(m?.steps) ? m.steps : []).map((x) => str(x, 240)).filter(Boolean).slice(0, 8),
       }))
       .filter((m) => m.name && m.kcal > 0),
@@ -72,6 +74,35 @@ export function normalizeMealPlan(raw) {
     }))
     .filter((i) => i.name);
   return { days, shopping, tip: str(raw?.tip, 300) };
+}
+
+/** Bereinigt die KI-Antwort für einen einzelnen Tag; null, wenn unbrauchbar. */
+export function normalizeDay(raw, title) {
+  const day = normalizeMealPlan({ days: [{ title, meals: raw?.meals }] }).days[0];
+  return day ? { ...day, tip: str(raw?.tip, 300) } : null;
+}
+
+/** Fasst die Zutaten aller fertigen Tage zu einer Einkaufsliste zusammen. */
+export function buildShopping(days) {
+  const map = new Map();
+  for (const d of days) {
+    for (const m of d?.meals || []) {
+      for (const i of m.ingredients) {
+        const label = i.buy || i.name;
+        const key = label.toLowerCase();
+        const item = map.get(key) || { name: label, uses: [], section: i.section && i.section !== 'sonst' ? i.section : guessSection(i.name), store: i.store || 'any', price: i.price || 0 };
+        item.uses.push(`${i.name}${i.amount ? ` ${i.amount}` : ''}`);
+        map.set(key, item);
+      }
+    }
+  }
+  return [...map.values()].map((i) => ({
+    name: i.name,
+    amount: i.uses.length > 1 ? `für ${i.uses.length} Gerichte` : i.uses[0],
+    section: i.section,
+    store: i.store,
+    price: i.price,
+  }));
 }
 
 /** Summe der Nährwerte und Kosten eines Plantags. */

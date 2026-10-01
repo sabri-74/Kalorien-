@@ -4,7 +4,7 @@
 import {
   store, ui, C, S, $, esc, fmt, num, views, actions, forms, commit, save, toast, haptic, targets, addEntry, avatar, confirmDialog,
 } from '../core.js';
-import { createMealPlan, aiStatus, aiErrorText } from '../ai.js';
+import { createMealPlanDay, aiStatus, aiErrorText } from '../ai.js';
 import * as P from '../mealplan.js';
 import { MEAL_META } from '../emoji.js';
 import { confetti } from '../fx.js';
@@ -35,6 +35,11 @@ actions['plan-open'] = (d) => {
 
 views.plan = (root) => {
   const s = store.state;
+  // Ältere Pläne und nach einem Neuladen unterbrochene Tage reparieren
+  for (const d of s.mealPlan?.days || []) {
+    if (!d.status) d.status = 'ok';
+    if (d.status === 'pending' && !pl.controller) Object.assign(d, { status: 'error', error: 'Unterbrochen – tipp auf „Nochmal versuchen“.' });
+  }
   const open = s.shopping.filter((i) => !i.done).length;
   root.innerHTML = `
     <header class="page-head">
@@ -44,8 +49,8 @@ views.plan = (root) => {
       <button data-action="plan-sub" data-id="plan" aria-pressed="${pl.sub === 'plan'}">🗓️ Gerichte</button>
       <button data-action="plan-sub" data-id="list" aria-pressed="${pl.sub === 'list'}">🧾 Einkaufsliste${open ? ` (${open})` : ''}</button>
     </div>
-    ${pl.sub === 'list' ? listHtml() : pl.busy ? loadingHtml() : s.mealPlan && !pl.showForm ? planHtml() : formHtml()}`;
-  if (pl.sub === 'plan' && !pl.busy && (!s.mealPlan || pl.showForm)) setTimeout(checkProvider, 0);
+    ${pl.sub === 'list' ? listHtml() : s.mealPlan && !pl.showForm ? planHtml() : formHtml()}`;
+  if (pl.sub === 'plan' && (!s.mealPlan || pl.showForm)) setTimeout(checkProvider, 0);
 };
 
 actions['plan-sub'] = (d) => {
@@ -126,72 +131,149 @@ async function checkProvider() {
   }
 }
 
-function loadingHtml() {
-  const f = form();
-  return `<article class="card"><div class="ai-loading">
-    <div class="ai-orb"><span aria-hidden="true">🛒</span></div>
-    <h3>Die KI plant ${f.days === 1 ? 'deinen Tag' : `deine ${f.days} Tage`} …</h3>
-    <p class="hint">Sie stellt Gerichte für deinen Bedarf zusammen und sucht günstige Zutaten${f.store !== 'any' ? ` bei ${P.STORES[f.store].label}` : ''}. Das dauert bei mehreren Tagen bis zu einer Minute.</p>
-    <div class="dots" aria-hidden="true"><i></i><i></i><i></i></div>
-    <button class="btn btn-ghost" data-action="plan-abort">Abbrechen</button>
-  </div></article>`;
+
+
+
+const WEEKDAYS = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+const dayTitle = (i) => `Tag ${i + 1} – ${WEEKDAYS[(new Date().getDay() + i) % 7]}`;
+
+function refreshShopping() {
+  const s = store.state;
+  const done = new Set(s.shopping.filter((i) => i.source === 'plan' && i.done).map((i) => i.name.toLowerCase()));
+  const items = P.buildShopping(s.mealPlan.days.filter((d) => d.status === 'ok'));
+  s.shopping = [...s.shopping.filter((i) => i.source !== 'plan'), ...items.map((i) => ({ ...i, id: S.uid(), done: done.has(i.name.toLowerCase()), source: 'plan' }))];
 }
 
-actions['plan-abort'] = () => pl.controller?.abort();
+async function generateDay(plan, i) {
+  const d = plan.days[i];
+  d.status = 'pending';
+  d.started = Date.now();
+  delete d.error;
+  const f = plan.params;
+  try {
+    const raw = await createMealPlanDay({
+      apiKey: store.state.settings.apiKey, signal: pl.controller?.signal,
+      index: i, days: plan.days.length, store: f.store, storeLabel: P.STORES[f.store].label, budget: f.budget,
+      diet: f.diet, dietLabel: P.DIETS[f.diet], wish: f.wish, targets: plan.targets,
+    });
+    const day = P.normalizeDay(raw, d.title);
+    if (!day) throw Object.assign(new Error('leer'), { code: 'invalid' });
+    Object.assign(d, day, { status: 'ok', seconds: Math.round((Date.now() - d.started) / 1000) });
+    if (!plan.tip && day.tip) plan.tip = day.tip;
+  } catch (e) {
+    d.status = e.code === 'cancelled' ? 'cancelled' : 'error';
+    d.error = e.code === 'cancelled' ? 'Abgebrochen.' : aiErrorText(e);
+  }
+  if (store.state.mealPlan !== plan) return; // inzwischen neuer Plan
+  refreshShopping();
+  commit();
+}
+
+async function runQueue(plan, indexes) {
+  pl.controller = new AbortController();
+  const queue = [...indexes];
+  // Zwei Tage gleichzeitig: schnell, aber ohne die Anfrage-Grenze zu reißen
+  const worker = async () => {
+    while (queue.length && store.state.mealPlan === plan) await generateDay(plan, queue.shift());
+  };
+  await Promise.all([worker(), worker()]);
+  pl.controller = null;
+  if (store.state.mealPlan !== plan) return;
+  const ok = plan.days.filter((d) => d.status === 'ok').length;
+  if (ok === plan.days.length) {
+    confetti({ emojis: ['🛒', '🥗', '💶', '✨'] });
+    toast(`🗓️ Plan fertig – ${store.state.shopping.filter((i) => i.source === 'plan').length} Artikel auf der Einkaufsliste`);
+  } else if (ok) toast(`${ok} von ${plan.days.length} Tagen fertig – die übrigen kannst du neu versuchen`);
+  commit();
+}
 
 forms['plan-create'] = async () => {
   syncForm();
   const f = form();
-  const t = targets();
-  pl.busy = true;
+  const st = await aiStatus(store.state.settings.apiKey);
+  if (!st.provider) {
+    pl.error = aiErrorText({ code: 'no_provider' });
+    commit();
+    return;
+  }
+  const s = store.state;
+  const plan = {
+    params: { ...f }, targets: targets(), createdAt: Date.now(), tip: '',
+    days: Array.from({ length: f.days }, (_, i) => ({ title: dayTitle(i), status: 'pending', meals: [] })),
+  };
+  s.mealPlan = plan;
+  s.shopping = s.shopping.filter((i) => i.source !== 'plan');
+  pl.day = 0;
+  pl.showForm = false;
   pl.error = '';
   commit();
-  pl.controller = new AbortController();
-  try {
-    const raw = await createMealPlan({
-      apiKey: store.state.settings.apiKey, signal: pl.controller.signal,
-      days: f.days, store: f.store, storeLabel: P.STORES[f.store].label, budget: f.budget, diet: f.diet, dietLabel: P.DIETS[f.diet], wish: f.wish,
-      targets: t,
-    });
-    const plan = P.normalizeMealPlan(raw);
-    if (!plan.days.length) throw Object.assign(new Error('leer'), { code: 'invalid' });
-    const s = store.state;
-    s.mealPlan = { ...plan, params: { ...f }, createdAt: Date.now() };
-    s.shopping = [...s.shopping.filter((i) => i.source !== 'plan'), ...plan.shopping.map((i) => ({ ...i, id: S.uid(), done: false, source: 'plan' }))];
-    pl.day = 0;
-    pl.showForm = false;
-    confetti({ emojis: ['🛒', '🥗', '💶', '✨'] });
-    toast(`🗓️ Plan für ${f.days} ${f.days === 1 ? 'Tag' : 'Tage'} fertig – ${plan.shopping.length} Artikel auf der Einkaufsliste`);
-  } catch (e) {
-    if (e.code !== 'cancelled') pl.error = aiErrorText(e);
-  } finally {
-    pl.busy = false;
-    pl.controller = null;
-    commit();
-    if (!store.state.mealPlan || pl.showForm) checkProvider();
-  }
+  await runQueue(plan, plan.days.map((_, i) => i));
 };
 
+actions['plan-retry-day'] = (d) => {
+  const plan = store.state.mealPlan;
+  if (!plan) return;
+  const i = Number(d.i);
+  plan.days[i].status = 'pending';
+  commit();
+  runQueue(plan, [i]);
+};
+
+actions['plan-abort'] = () => pl.controller?.abort();
+
+// Sekundenzähler für Tage, die gerade geplant werden
+setInterval(() => {
+  if (ui.tab !== 'plan') return;
+  document.querySelectorAll('[data-elapsed]').forEach((el) => {
+    el.textContent = `${Math.round((Date.now() - Number(el.dataset.elapsed)) / 1000)} s`;
+  });
+}, 1000);
+
 // ---------- Plan anzeigen ----------
+
+function dayChip(d, i) {
+  const icon = d.status === 'ok' ? '' : d.status === 'pending' ? '⏳ ' : '⚠️ ';
+  return `<button class="chip" data-action="plan-day" data-i="${i}" aria-pressed="${i === pl.day}">${icon}${esc(d.title)}</button>`;
+}
 
 function planHtml() {
   const plan = store.state.mealPlan;
   const t = targets();
-  const day = plan.days[Math.min(pl.day, plan.days.length - 1)];
+  pl.day = Math.min(pl.day, plan.days.length - 1);
+  const day = plan.days[pl.day];
+  const busy = plan.days.some((d) => d.status === 'pending');
+  const chips = plan.days.length > 1 ? `<div class="chips">${plan.days.map(dayChip).join('')}</div>` : '';
+  if (day.status !== 'ok') {
+    return `<article class="card plan-summary">${chips}
+      ${
+        day.status === 'pending'
+          ? `<div class="ai-loading"><div class="ai-orb"><span aria-hidden="true">🛒</span></div>
+              <h3>${esc(day.title)} wird geplant …</h3>
+              <p class="hint">Die KI stellt 4 Gerichte für deinen Bedarf zusammen und sucht günstige Zutaten. Meist 15–40 Sekunden.</p>
+              <p class="plan-timer" data-elapsed="${day.started || Date.now()}">0 s</p>
+              <div class="dots" aria-hidden="true"><i></i><i></i><i></i></div>
+              <button class="btn btn-ghost" data-action="plan-abort">Abbrechen</button></div>`
+          : `<div class="ai-loading"><span class="big-emoji" aria-hidden="true">🙈</span><h3>${esc(day.title)} hat nicht geklappt</h3>
+              <p class="hint">${esc(day.error || 'Unbekannter Fehler.')}</p>
+              <div class="sheet-actions"><button class="btn btn-ghost" data-action="plan-new">Einstellungen ändern</button><button class="btn btn-primary" data-action="plan-retry-day" data-i="${pl.day}">🔄 Nochmal versuchen</button></div></div>`
+      }
+    </article>`;
+  }
   const tot = P.dayPlanTotals(day);
   const kcalPct = Math.round((tot.kcal / t.kcal) * 100);
   const protPct = Math.round((tot.protein / t.protein) * 100);
   const shopTotal = P.shoppingTotal(store.state.shopping.filter((i) => i.source === 'plan'));
   return `
     <article class="card plan-summary">
+      ${chips}
       <div class="plan-stats">
         <div><span aria-hidden="true">🔥</span><b>${fmt(tot.kcal)}</b><small>kcal · ${kcalPct} % vom Bedarf</small></div>
         <div><span aria-hidden="true">💪</span><b>${fmt(tot.protein)} g</b><small>Eiweiß · ${protPct} %</small></div>
         <div><span aria-hidden="true">💶</span><b>${euro(tot.price)}</b><small>pro Tag (ca.)</small></div>
-        <div><span aria-hidden="true">🛒</span><b>${euro(shopTotal)}</b><small>Einkauf gesamt</small></div>
+        <div><span aria-hidden="true">🛒</span><b>${euro(shopTotal)}</b><small>Einkauf${busy ? ' (bisher)' : ' gesamt'}</small></div>
       </div>
       <div class="cover-bar" aria-label="Kalorienbedarf zu ${kcalPct} Prozent gedeckt"><i style="width:${Math.min(100, kcalPct)}%"></i></div>
-      ${plan.days.length > 1 ? `<div class="chips">${plan.days.map((d, i) => `<button class="chip" data-action="plan-day" data-i="${i}" aria-pressed="${i === pl.day}">${esc(d.title)}</button>`).join('')}</div>` : ''}
+      ${busy ? '<p class="hint">⏳ Die übrigen Tage werden gerade geplant …</p>' : ''}
       ${plan.tip ? `<p class="hint">💡 ${esc(plan.tip)}</p>` : ''}
       <div class="sheet-actions">
         <button class="btn btn-primary" data-action="plan-log-day">✅ Ganzen Tag eintragen</button>
@@ -219,7 +301,7 @@ function mealHtml(m, i) {
     <div class="plan-macros"><span>🔥 <b>${fmt(m.kcal)}</b> kcal</span><span>💪 ${fmt(m.protein)} g</span><span>🍞 ${fmt(m.carbs)} g</span><span>🥑 ${fmt(m.fat)} g</span></div>
     <details class="plan-details">
       <summary>🛒 Zutaten & 👩‍🍳 Zubereitung</summary>
-      <ul class="rows">${m.ingredients.map((g) => `<li class="row">${avatar(g.name)}<span class="row-main"><b>${esc(g.name)}</b><small>${esc(g.amount)}</small></span></li>`).join('')}</ul>
+      <ul class="rows">${m.ingredients.map((g) => `<li class="row">${avatar(g.name)}<span class="row-main"><b>${esc(g.name)} <span class="muted">${esc(g.amount)}</span></b><small>${g.buy ? `🛒 ${esc(g.buy)}` : ''}${g.store && g.store !== 'any' ? ` · ${P.STORES[g.store].label}` : ''}${g.price ? ` · ${euro(g.price)}` : ''}</small></span></li>`).join('')}</ul>
       ${m.steps.length ? `<ol class="steps">${m.steps.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>` : ''}
     </details>
     <div class="sheet-actions">
@@ -229,7 +311,10 @@ function mealHtml(m, i) {
   </article>`;
 }
 
-const currentDay = () => store.state.mealPlan.days[Math.min(pl.day, store.state.mealPlan.days.length - 1)];
+const currentDay = () => {
+  const d = store.state.mealPlan.days[Math.min(pl.day, store.state.mealPlan.days.length - 1)];
+  return d.status === 'ok' ? d : { meals: [] };
+};
 const logMeal = (m) =>
   addEntry(ui.date, m.slot, { name: m.name, amount: 1, unit: 'portion', base: { kcal: m.kcal, protein: m.protein, carbs: m.carbs, fat: m.fat }, source: 'plan' });
 

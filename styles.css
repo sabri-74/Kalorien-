@@ -1102,6 +1102,7 @@ dialog.onboard::backdrop { background: var(--bg); }
 .plan-stats small { color: var(--muted); font-size: 0.72rem; font-weight: 700; }
 .plan-summary .sheet-actions, .shop-head .sheet-actions { flex-wrap: wrap; }
 .plan-summary .sheet-actions .btn, .shop-head .sheet-actions .btn { flex: 1 1 auto; }
+.plan-timer { font: 800 1.6rem var(--font-display); color: var(--brand); }
 .cover-bar { height: 10px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
 .cover-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #16a34a, #eab308, #f97316); transition: width 0.9s var(--ease); }
 .view-in .plan-meal { animation-delay: calc(var(--i, 0) * 70ms); }

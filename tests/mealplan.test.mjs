@@ -55,3 +55,22 @@ test('Regal-Schätzung und Links', () => {
   assert.match(P.storeMapUrl('penny'), /maps\/search\/Penny/);
   assert.match(P.storeMapUrl('any'), /Supermarkt/);
 });
+
+test('Tag bereinigen und Einkaufsliste zusammenfassen', () => {
+  const ing = (name, amount, buy, store, price, section) => ({ name, amount, buy, store, price, section });
+  const raw = { tip: 'Großpackung lohnt sich.', meals: [
+    { slot: 'breakfast', name: 'Oats', kcal: 500, protein: 30, ingredients: [ing('Haferflocken', '80 g', 'Golden Sun Haferflocken 500 g', 'Lidl', 0.69, 'vorrat'), ing('Skyr', '200 g', 'Milbona Skyr 450 g', 'Lidl', 1.29, 'kuehl')] },
+    { slot: 'snacks', name: 'Skyr-Snack', kcal: 200, protein: 20, ingredients: [ing('Skyr', '150 g', 'Milbona Skyr 450 g', 'Lidl', 1.29, 'kuehl'), ing('Apfel', '1 Stück', '', '', 0, '')] },
+  ] };
+  const day = P.normalizeDay(raw, 'Tag 1');
+  assert.equal(day.title, 'Tag 1');
+  assert.equal(day.tip, 'Großpackung lohnt sich.');
+  assert.equal(day.meals[0].ingredients[0].store, 'lidl');
+  assert.equal(P.normalizeDay({ meals: [] }, 'x'), null);
+  const list = P.buildShopping([day, { meals: [] }]);
+  assert.deepEqual(list.map((i) => i.name), ['Golden Sun Haferflocken 500 g', 'Milbona Skyr 450 g', 'Apfel']);
+  const skyr = list[1];
+  assert.equal(skyr.amount, 'für 2 Gerichte');
+  assert.equal(skyr.price, 1.29);
+  assert.equal(list[2].section, 'obst');
+});

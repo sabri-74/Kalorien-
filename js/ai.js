@@ -23,14 +23,20 @@ const ERROR_TEXT = {
   rate: 'Gerade zu viele Anfragen. Versuch es in einer Minute noch einmal.',
   overloaded: 'Die KI ist gerade ausgelastet. Versuch es gleich noch einmal.',
   network: 'Keine Verbindung zur KI. Prüf deine Internetverbindung.',
-  refused: 'Die KI konnte dieses Bild nicht auswerten.',
+  refused: 'Die KI hat diese Anfrage abgelehnt. Formulier sie etwas anders.',
+  upstream: 'Die Verbindung zur KI ist abgebrochen. Tipp auf „Nochmal versuchen“.',
+  session: 'Deine Claude-Anmeldung ist abgelaufen. Bitte melde dich neu an.',
+  unavailable: 'Die KI ist in dieser Ansicht nicht verfügbar.',
+  images: 'Bilder können hier nicht an die KI gesendet werden. Beschreib dein Essen stattdessen.',
+  toolong: 'Die Anfrage war zu groß. Wähl weniger Tage oder kürzere Wünsche.',
   invalid: 'Die Antwort der KI war unvollständig. Versuch es noch einmal.',
   credit: 'Dein API-Guthaben ist aufgebraucht. Lade es in der Claude Console auf.',
   cancelled: 'Abgebrochen.',
 };
 
 export function aiErrorText(err) {
-  return ERROR_TEXT[err?.code] || 'Die Analyse hat nicht geklappt. Versuch es noch einmal.';
+  const text = ERROR_TEXT[err?.code] || 'Das hat nicht geklappt. Versuch es noch einmal.';
+  return err?.raw ? `${text} (Code: ${err.raw})` : text;
 }
 
 // ---------- Anbieter erkennen ----------
@@ -108,7 +114,7 @@ function blobToBase64(blob) {
   });
 }
 
-async function callApi(apiKey, content, { schema, signal } = {}) {
+async function callApi(apiKey, content, { schema, signal, effort = 'medium' } = {}) {
   let res;
   try {
     res = await fetch(API_URL, {
@@ -125,7 +131,7 @@ async function callApi(apiKey, content, { schema, signal } = {}) {
         model: AI_MODEL,
         max_tokens: 16000,
         fallbacks: 'default',
-        output_config: { effort: 'medium', ...(schema ? { format: { type: 'json_schema', schema } } : {}) },
+        output_config: { effort, ...(schema ? { format: { type: 'json_schema', schema } } : {}) },
         messages: [{ role: 'user', content }],
       }),
     });
@@ -169,9 +175,16 @@ function parseJson(text) {
   throw new AiError('invalid');
 }
 
+const SAMPLE_CODES = {
+  not_granted: 'not_granted', rate_limited: 'rate', cancelled: 'cancelled', invalid_json: 'invalid', empty_completion: 'invalid',
+  refused: 'refused', upstream_error: 'upstream', session_expired: 'session', sampling_disabled: 'unavailable',
+  capability_disabled: 'unavailable', capability_removed: 'unavailable', not_declared: 'unavailable',
+  images_unavailable: 'images', image_rejected: 'images', prompt_too_large: 'toolong',
+};
 function mapSampleError(e) {
-  const map = { not_granted: 'not_granted', rate_limited: 'rate', cancelled: 'cancelled', invalid_json: 'invalid', refused: 'refused' };
-  return new AiError(map[e?.code] || 'overloaded', e?.message);
+  const err = new AiError(SAMPLE_CODES[e?.code] || 'upstream', e?.message);
+  if (e?.code && e.code !== 'cancelled') err.raw = e.code;
+  return err;
 }
 
 /**
@@ -232,13 +245,13 @@ Gib 3 bis 4 konkrete, motivierende Tipps auf Deutsch (Du-Form). Jeder Tipp eine 
 
 // ---------- Allgemeine JSON-Anfrage ----------
 
-async function askJson({ apiKey, prompt, schema, image, signal }) {
+async function askJson({ apiKey, prompt, schema, image, signal, fast }) {
   const status = await aiStatus(apiKey);
   if (!status.provider) throw new AiError('no_provider');
   if (status.provider === 'claude') {
     const sample = await getSample();
     try {
-      return await sample.json(prompt, { images: image && status.images ? [image] : undefined, signal });
+      return await sample.json(prompt, { images: image && status.images ? [image] : undefined, signal, ...(fast ? { modelTier: 'quick' } : {}) });
     } catch (e) {
       throw mapSampleError(e);
     }
@@ -246,7 +259,7 @@ async function askJson({ apiKey, prompt, schema, image, signal }) {
   const content = [];
   if (image) content.push({ type: 'image', source: { type: 'base64', media_type: image.type || 'image/jpeg', data: await blobToBase64(image) } });
   content.push({ type: 'text', text: prompt });
-  return parseJson(await callApi(apiKey, content, { schema, signal }));
+  return parseJson(await callApi(apiKey, content, { schema, signal, effort: fast ? 'low' : 'medium' }));
 }
 
 const num = (v, max) => {
@@ -386,88 +399,67 @@ Antworte nur mit JSON: {"emoji": "🍳", "name": "…", "minutes": 15, "servings
   };
 }
 
-// ---------- Essensplan mit Einkaufsliste ----------
+// ---------- Essensplan: ein Tag pro Anfrage (schnell, parallel) ----------
 
-const PLAN_SCHEMA = {
+const ING_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['days', 'shopping', 'tip'],
+  required: ['name', 'amount', 'buy', 'store', 'price', 'section'],
+  properties: {
+    name: { type: 'string' },
+    amount: { type: 'string' },
+    buy: { type: 'string' },
+    store: { type: 'string' },
+    price: { type: 'number' },
+    section: { type: 'string', enum: ['obst', 'fleisch', 'kuehl', 'brot', 'vorrat', 'tk', 'sonst'] },
+  },
+};
+
+const DAY_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['meals', 'tip'],
   properties: {
     tip: { type: 'string' },
-    days: {
+    meals: {
       type: 'array',
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['title', 'meals'],
+        required: ['slot', 'emoji', 'name', 'minutes', 'kcal', 'protein', 'carbs', 'fat', 'price', 'ingredients', 'steps'],
         properties: {
-          title: { type: 'string' },
-          meals: {
-            type: 'array',
-            items: {
-              type: 'object',
-              additionalProperties: false,
-              required: ['slot', 'emoji', 'name', 'minutes', 'kcal', 'protein', 'carbs', 'fat', 'price', 'ingredients', 'steps'],
-              properties: {
-                slot: { type: 'string', enum: ['breakfast', 'lunch', 'dinner', 'snacks'] },
-                emoji: { type: 'string' },
-                name: { type: 'string' },
-                minutes: { type: 'number' },
-                kcal: { type: 'number' },
-                protein: { type: 'number' },
-                carbs: { type: 'number' },
-                fat: { type: 'number' },
-                price: { type: 'number' },
-                ingredients: {
-                  type: 'array',
-                  items: { type: 'object', additionalProperties: false, required: ['name', 'amount'], properties: { name: { type: 'string' }, amount: { type: 'string' } } },
-                },
-                steps: { type: 'array', items: { type: 'string' } },
-              },
-            },
-          },
-        },
-      },
-    },
-    shopping: {
-      type: 'array',
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['name', 'amount', 'section', 'store', 'price'],
-        properties: {
+          slot: { type: 'string', enum: ['breakfast', 'lunch', 'dinner', 'snacks'] },
+          emoji: { type: 'string' },
           name: { type: 'string' },
-          amount: { type: 'string' },
-          section: { type: 'string', enum: ['obst', 'fleisch', 'kuehl', 'brot', 'vorrat', 'tk', 'sonst'] },
-          store: { type: 'string' },
+          minutes: { type: 'number' },
+          kcal: { type: 'number' },
+          protein: { type: 'number' },
+          carbs: { type: 'number' },
+          fat: { type: 'number' },
           price: { type: 'number' },
+          ingredients: { type: 'array', items: ING_SCHEMA },
+          steps: { type: 'array', items: { type: 'string' } },
         },
       },
     },
   },
 };
 
-/**
- * Erstellt einen Essensplan, der den Tagesbedarf deckt, mit günstiger
- * Einkaufsliste für deutsche Supermärkte. Liefert die rohe KI-Antwort.
- * opts: { days, store, budget, diet, wish, targets: { kcal, protein, carbs, fat } }
- */
-export async function createMealPlan({ apiKey, signal, ...o }) {
-  const storeText = o.store === 'any' ? 'beim jeweils günstigsten deutschen Discounter (Aldi, Lidl, Netto, Penny, Kaufland)' : `bei ${o.storeLabel}`;
-  const prompt = `Du bist eine Ernährungsberaterin und Spar-Expertin für den deutschen Lebensmittelhandel.
-Erstelle einen Essensplan für ${o.days} ${o.days === 1 ? 'Tag' : 'Tage'} für eine Person.
-Tagesbedarf: ${Math.round(o.targets.kcal)} kcal, mindestens ${Math.round(o.targets.protein)} g Eiweiß, etwa ${Math.round(o.targets.carbs)} g Kohlenhydrate und ${Math.round(o.targets.fat)} g Fett.
-Ernährungsweise: ${o.dietLabel}.${o.wish ? ` Wünsche: "${o.wish}".` : ''}
-Budget: höchstens ${o.budget.toFixed(2)} € pro Tag. Eingekauft wird ${storeText}.
+const THEMES = ['deutsche Hausmannskost', 'mediterran', 'asiatisch', 'mexikanisch', 'orientalisch', 'italienisch', 'Bowls & Meal-Prep'];
 
-Regeln:
-- Pro Tag 4 Mahlzeiten: breakfast, lunch, dinner, snacks. Die Summe pro Tag soll den Kalorienbedarf auf ±5 % treffen und das Eiweißziel erreichen.
-- Einfache, alltagstaugliche Gerichte (max. 30 Min.), Reste und Zutaten clever wiederverwenden, damit wenig übrig bleibt und es günstig ist.
-- Nährwerte (kcal, protein, carbs, fat) gelten für die eine Portion. "price" = anteilige Kosten der Portion in Euro.
-- Zutaten mit Mengen ("80 g", "2 Stück"), 2 bis 5 kurze Kochschritte.
-- "shopping": zusammengefasste Einkaufsliste für ALLE Tage mit realistischen Packungsgrößen der Eigenmarken (z. B. "Milbona Skyr 450 g", "Golden Sun Haferflocken 500 g", "K-Classic …", "gut&günstig …"). "store" = wo es am günstigsten ist (Lidl, Aldi, Kaufland, Netto, Penny, REWE oder Edeka), "price" = realistischer aktueller Packungspreis in Euro, "section" = Regal (obst, fleisch, kuehl, brot, vorrat, tk, sonst).
-- "title" pro Tag: z. B. "Tag 1 – Montag". "tip": ein Spar- oder Meal-Prep-Tipp in einem Satz.
-Alle Texte auf Deutsch. Antworte nur mit JSON:
-{"tip": "…", "days": [{"title": "Tag 1", "meals": [{"slot": "breakfast", "emoji": "🥣", "name": "…", "minutes": 5, "kcal": 520, "protein": 32, "carbs": 60, "fat": 14, "price": 0.95, "ingredients": [{"name": "Haferflocken", "amount": "80 g"}], "steps": ["…"]}]}], "shopping": [{"name": "Haferflocken", "amount": "500 g", "section": "vorrat", "store": "Lidl", "price": 0.69}]}`;
-  return askJson({ apiKey, prompt, schema: PLAN_SCHEMA, signal });
+/** Prompt für einen Plantag (exportiert für Tests). */
+export function mealPlanDayPrompt(o) {
+  const storeText = o.store === 'any' ? 'beim jeweils günstigsten Discounter (Aldi, Lidl, Netto, Penny, Kaufland)' : `bei ${o.storeLabel}`;
+  return `Du bist Ernährungsberaterin und Spar-Expertin für deutsche Supermärkte. Plane EINEN Tag für eine Person (Tag ${o.index + 1} von ${o.days}, Küchenstil: ${THEMES[o.index % THEMES.length]}).
+Tagesziel: ${Math.round(o.targets.kcal)} kcal (±5 %), mindestens ${Math.round(o.targets.protein)} g Eiweiß, ca. ${Math.round(o.targets.carbs)} g Kohlenhydrate, ${Math.round(o.targets.fat)} g Fett.
+Ernährung: ${o.dietLabel}.${o.wish ? ` Wünsche: ${o.wish}.` : ''} Budget: höchstens ${o.budget.toFixed(2)} € für den Tag. Einkauf ${storeText}.
+Genau 4 Mahlzeiten mit slot breakfast, lunch, dinner, snacks – einfach, max. 25 Minuten.
+Je Mahlzeit: kcal, protein, carbs, fat und price (€) für die Portion; 3 bis 6 Zutaten mit amount (z. B. "80 g"), buy = konkrete günstige Packung als Eigenmarke (z. B. "Milbona Skyr 450 g"), store (Lidl, Aldi, Kaufland, Netto, Penny, REWE oder Edeka), price = Packungspreis in €, section (obst, fleisch, kuehl, brot, vorrat, tk, sonst); höchstens 3 kurze Schritte. tip = ein Spartipp in einem Satz.
+Alles auf Deutsch. Antworte nur mit JSON:
+{"tip":"…","meals":[{"slot":"breakfast","emoji":"🥣","name":"…","minutes":5,"kcal":520,"protein":32,"carbs":60,"fat":14,"price":0.95,"ingredients":[{"name":"Haferflocken","amount":"80 g","buy":"Golden Sun Haferflocken 500 g","store":"Lidl","price":0.69,"section":"vorrat"}],"steps":["…"]}]}`;
+}
+
+/** Plant einen Tag. Liefert die rohe KI-Antwort ({ tip, meals }). */
+export async function createMealPlanDay({ apiKey, signal, ...o }) {
+  return askJson({ apiKey, prompt: mealPlanDayPrompt(o), schema: DAY_SCHEMA, signal, fast: true });
 }
