@@ -1,0 +1,18 @@
+{
+  "name": "Kalorien & Fitness",
+  "short_name": "Kalorien",
+  "description": "Kalorien zählen, Training loggen und Fortschritt verfolgen.",
+  "lang": "de",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f3ff",
+  "theme_color": "#7c3aed",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Training", "url": "./#training" },
+    { "name": "Fortschritt", "url": "./#progress" }
+  ]
+}
