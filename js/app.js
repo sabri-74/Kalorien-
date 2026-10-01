@@ -6,11 +6,12 @@ import './views/dishes.js';
 import './views/training.js';
 import './views/stats.js';
 import './views/aitools.js';
+import './views/plan.js';
 import { checkBadges } from './views/rewards.js';
 import { openOnboarding } from './views/profile.js';
 import { stopScan } from './views/food.js';
 
-const TABS = ['today', 'dishes', 'training', 'stats', 'profile'];
+const TABS = ['today', 'dishes', 'training', 'stats', 'profile', 'plan'];
 
 function applyTheme() {
   const t = store.state.settings.theme;
@@ -42,10 +43,19 @@ function go(tab) {
   if (changed) {
     window.scrollTo({ top: 0 });
     const v = $('#view');
-    v.classList.remove('view-in');
-    void v.offsetWidth;
-    v.classList.add('view-in');
+    animateIn();
   }
+}
+
+// Einblend-Animation nur beim Seitenwechsel, nicht bei jedem Neuzeichnen
+let animTimer;
+function animateIn() {
+  const v = $('#view');
+  v.classList.remove('view-in');
+  void v.offsetWidth;
+  v.classList.add('view-in');
+  clearTimeout(animTimer);
+  animTimer = setTimeout(() => v.classList.remove('view-in'), 900);
 }
 
 actions['close-sheet'] = () => $('#sheet').close();
@@ -124,6 +134,7 @@ if (TABS.includes(hash)) ui.tab = hash;
 if (hash === 'progress') ui.tab = 'stats';
 
 render();
+animateIn();
 save();
 
 if (!store.state.profile) openOnboarding();

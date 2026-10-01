@@ -385,3 +385,89 @@ Antworte nur mit JSON: {"emoji": "🍳", "name": "…", "minutes": 15, "servings
     tip: str(raw.tip, 240),
   };
 }
+
+// ---------- Essensplan mit Einkaufsliste ----------
+
+const PLAN_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['days', 'shopping', 'tip'],
+  properties: {
+    tip: { type: 'string' },
+    days: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['title', 'meals'],
+        properties: {
+          title: { type: 'string' },
+          meals: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['slot', 'emoji', 'name', 'minutes', 'kcal', 'protein', 'carbs', 'fat', 'price', 'ingredients', 'steps'],
+              properties: {
+                slot: { type: 'string', enum: ['breakfast', 'lunch', 'dinner', 'snacks'] },
+                emoji: { type: 'string' },
+                name: { type: 'string' },
+                minutes: { type: 'number' },
+                kcal: { type: 'number' },
+                protein: { type: 'number' },
+                carbs: { type: 'number' },
+                fat: { type: 'number' },
+                price: { type: 'number' },
+                ingredients: {
+                  type: 'array',
+                  items: { type: 'object', additionalProperties: false, required: ['name', 'amount'], properties: { name: { type: 'string' }, amount: { type: 'string' } } },
+                },
+                steps: { type: 'array', items: { type: 'string' } },
+              },
+            },
+          },
+        },
+      },
+    },
+    shopping: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['name', 'amount', 'section', 'store', 'price'],
+        properties: {
+          name: { type: 'string' },
+          amount: { type: 'string' },
+          section: { type: 'string', enum: ['obst', 'fleisch', 'kuehl', 'brot', 'vorrat', 'tk', 'sonst'] },
+          store: { type: 'string' },
+          price: { type: 'number' },
+        },
+      },
+    },
+  },
+};
+
+/**
+ * Erstellt einen Essensplan, der den Tagesbedarf deckt, mit günstiger
+ * Einkaufsliste für deutsche Supermärkte. Liefert die rohe KI-Antwort.
+ * opts: { days, store, budget, diet, wish, targets: { kcal, protein, carbs, fat } }
+ */
+export async function createMealPlan({ apiKey, signal, ...o }) {
+  const storeText = o.store === 'any' ? 'beim jeweils günstigsten deutschen Discounter (Aldi, Lidl, Netto, Penny, Kaufland)' : `bei ${o.storeLabel}`;
+  const prompt = `Du bist eine Ernährungsberaterin und Spar-Expertin für den deutschen Lebensmittelhandel.
+Erstelle einen Essensplan für ${o.days} ${o.days === 1 ? 'Tag' : 'Tage'} für eine Person.
+Tagesbedarf: ${Math.round(o.targets.kcal)} kcal, mindestens ${Math.round(o.targets.protein)} g Eiweiß, etwa ${Math.round(o.targets.carbs)} g Kohlenhydrate und ${Math.round(o.targets.fat)} g Fett.
+Ernährungsweise: ${o.dietLabel}.${o.wish ? ` Wünsche: "${o.wish}".` : ''}
+Budget: höchstens ${o.budget.toFixed(2)} € pro Tag. Eingekauft wird ${storeText}.
+
+Regeln:
+- Pro Tag 4 Mahlzeiten: breakfast, lunch, dinner, snacks. Die Summe pro Tag soll den Kalorienbedarf auf ±5 % treffen und das Eiweißziel erreichen.
+- Einfache, alltagstaugliche Gerichte (max. 30 Min.), Reste und Zutaten clever wiederverwenden, damit wenig übrig bleibt und es günstig ist.
+- Nährwerte (kcal, protein, carbs, fat) gelten für die eine Portion. "price" = anteilige Kosten der Portion in Euro.
+- Zutaten mit Mengen ("80 g", "2 Stück"), 2 bis 5 kurze Kochschritte.
+- "shopping": zusammengefasste Einkaufsliste für ALLE Tage mit realistischen Packungsgrößen der Eigenmarken (z. B. "Milbona Skyr 450 g", "Golden Sun Haferflocken 500 g", "K-Classic …", "gut&günstig …"). "store" = wo es am günstigsten ist (Lidl, Aldi, Kaufland, Netto, Penny, REWE oder Edeka), "price" = realistischer aktueller Packungspreis in Euro, "section" = Regal (obst, fleisch, kuehl, brot, vorrat, tk, sonst).
+- "title" pro Tag: z. B. "Tag 1 – Montag". "tip": ein Spar- oder Meal-Prep-Tipp in einem Satz.
+Alle Texte auf Deutsch. Antworte nur mit JSON:
+{"tip": "…", "days": [{"title": "Tag 1", "meals": [{"slot": "breakfast", "emoji": "🥣", "name": "…", "minutes": 5, "kcal": 520, "protein": 32, "carbs": 60, "fat": 14, "price": 0.95, "ingredients": [{"name": "Haferflocken", "amount": "80 g"}], "steps": ["…"]}]}], "shopping": [{"name": "Haferflocken", "amount": "500 g", "section": "vorrat", "store": "Lidl", "price": 0.69}]}`;
+  return askJson({ apiKey, prompt, schema: PLAN_SCHEMA, signal });
+}

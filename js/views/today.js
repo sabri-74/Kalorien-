@@ -127,12 +127,14 @@ function quickActions() {
     ['goto', 'dishes', '🍲', 'Gerichte', 'q-green', false],
     ['menu-scan', '', '📋', 'Speisekarte', 'q-pink', true],
     ['fridge-chef', '', '🧊', 'Kühlschrank', 'q-cyan', true],
+    ['plan-open', 'plan', '🗓️', 'Essensplan', 'q-yellow', true],
+    ['plan-open', 'list', '🧾', 'Einkauf', 'q-teal', false],
   ];
   return `
     <div class="quick" role="group" aria-label="Schnell eintragen">
       ${tiles
         .map(
-          ([action, mode, emoji, label, cls, ai]) => `<button class="quick-btn ${cls}" data-action="${action}" ${action === 'goto' ? `data-tab="${mode}"` : mode ? `data-mode="${mode}"` : ''}>
+          ([action, mode, emoji, label, cls, ai]) => `<button class="quick-btn ${cls}" data-action="${action}" ${action === 'goto' ? `data-tab="${mode}"` : action === 'plan-open' ? `data-sub="${mode}"` : mode ? `data-mode="${mode}"` : ''}>
             <span class="q-emoji" aria-hidden="true">${emoji}</span><span>${label}</span>${ai ? '<span class="q-ai">KI</span>' : ''}
           </button>`,
         )

@@ -60,6 +60,11 @@ views.dishes = (root) => {
       <div><p class="eyebrow">🍲 Rezepte & Lieblingsessen</p><h1>Gerichte</h1></div>
       <button class="btn btn-primary" data-action="dish-new">${icon('plus')}Neu</button>
     </header>
+    <button class="plan-banner" data-action="plan-open" data-sub="plan">
+      <span class="plan-banner-emoji" aria-hidden="true">🛒</span>
+      <span class="grow"><b>KI-Essensplaner</b><small>Gerichte für deinen Tagesbedarf + günstige Einkaufsliste für Lidl, Aldi, Kaufland & Co.</small></span>
+      <span class="q-ai">KI</span>
+    </button>
     ${
       s.dishes.length
         ? `${s.dishes.length > 4 ? `<label class="search-box">${icon('search')}<input id="dish-search" type="search" placeholder="Gericht suchen" value="${esc(dishQuery)}" aria-label="Gericht suchen"></label>` : ''}

@@ -6,7 +6,18 @@ Deine Daten bleiben auf deinem Gerät.
 
 ## Funktionen
 
-**Neu in dieser Version** 🎉
+**Essensplan & Einkaufsliste** 🛒
+- 🗓️ **KI-Essensplaner**: Gerichte für 1, 3 oder 7 Tage (Frühstück, Mittag, Abend, Snack), die deinen
+  Tagesbedarf an Kalorien und Eiweiß decken – mit Zutaten, Kochschritten, Zeit und Kosten pro Portion.
+- 💸 Günstig einkaufen: Wähle Lidl, Aldi, Kaufland, Netto, Penny, REWE, Edeka oder „am günstigsten“,
+  dazu Budget pro Tag, Ernährungsweise (z. B. vegetarisch) und Wünsche.
+- ✅ Mit einem Knopfdruck ein Gericht oder den ganzen Tag ins Tagebuch eintragen, oder als Gericht merken.
+- 🧾 **Einkaufsliste** nach Regalen sortiert (Obst & Gemüse, Kühlregal …), mit geschätzten Preisen,
+  Abhaken, eigenen Artikeln, Teilen (z. B. per WhatsApp) und Links:
+  📍 „Lidl in der Nähe“ öffnet Google Maps, 🔎 sucht das Produkt auf der Seite des Markts.
+- Hinweis: Die Preise schätzt die KI für typische Eigenmarken. Aktuelle Angebote können abweichen.
+
+**Neu in der vorherigen Version** 🎉
 - 🎨 Komplett neues, farbenfrohes Design: Sonnenuntergangs-Verlauf, Emojis für jedes Lebensmittel,
   jede Mahlzeit mit eigener Farbe, schwebende Farbblasen, Hell- und Dunkelmodus.
 - ✨ Animationen: hochzählende Zahlen, sich füllende Ringe, Wasserflasche mit Welle, Konfetti bei Erfolgen.
@@ -115,6 +126,7 @@ die Übernahme von Daten aus der ersten App-Version und die Konsistenz der Leben
 | `js/charts.js`, `js/icons.js` | SVG-Diagramme und Icons ohne Bibliothek |
 | `js/insights.js` | Tages-Score, Buddy-Tipps, Vorschläge, Prognose, Abzeichen (getestet) |
 | `js/emoji.js`, `js/fx.js` | Emoji-Zuordnung, Konfetti und Animationen |
+| `js/mealplan.js`, `js/views/plan.js` | Essensplan und Einkaufsliste (Logik getestet) |
 | `sw.js`, `manifest.webmanifest` | Offline-Betrieb und Installation als App |
 
 > Alle Werte, auch die der KI, sind Schätzungen und ersetzen keine ärztliche oder

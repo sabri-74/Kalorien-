@@ -498,7 +498,7 @@ input[type='checkbox'] { width: 24px; height: 24px; min-height: 0; accent-color:
 @keyframes pop { from { transform: scale(0.9); opacity: 0.4; } }
 
 /* ---------- Schnellaktionen ---------- */
-.quick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.quick { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .quick-btn {
   --c: var(--brand);
   position: relative; display: grid; justify-items: center; gap: 4px;
@@ -520,6 +520,8 @@ input[type='checkbox'] { width: 24px; height: 24px; min-height: 0; accent-color:
 .q-green { --c: #10b981; }
 .q-pink { --c: #ec4899; }
 .q-cyan { --c: #06b6d4; }
+.q-yellow { --c: #eab308; }
+.q-teal { --c: #14b8a6; }
 
 /* ---------- Passt noch rein ---------- */
 .fits { display: grid; gap: 10px; }
@@ -559,7 +561,7 @@ input[type='checkbox'] { width: 24px; height: 24px; min-height: 0; accent-color:
 .meal-bar.is-over i { background: linear-gradient(90deg, #fb7185, var(--bad)); }
 .rows { list-style: none; margin: 0; padding: 0; display: grid; }
 .rows > li + li { border-top: 1px dashed var(--line); }
-.rows > li { animation: rise 0.4s var(--ease) both; animation-delay: calc(var(--i, 0) * 45ms); }
+.view-in .rows > li, .sheet-body .rows > li { animation: rise 0.4s var(--ease) both; animation-delay: calc(var(--i, 0) * 45ms); }
 .row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 2px; border: 0; background: none; text-align: left; border-radius: var(--r-sm); min-width: 0; }
 button.row { transition: background 0.2s, transform 0.2s var(--spring); }
 button.row:hover { background: var(--surface-2); }
@@ -1070,12 +1072,74 @@ dialog.onboard::backdrop { background: var(--bg); }
   100% { transform: translate(var(--dx), calc(var(--dy) + var(--fall))) rotate(var(--rot)) scale(1); opacity: 0; }
 }
 
+/* ---------- Essensplan & Einkauf ---------- */
+.tool-plan { background: linear-gradient(135deg, #16a34a, #0d9488 55%, #eab308); }
+.plan-banner {
+  display: flex; align-items: center; gap: 14px; position: relative; text-align: left;
+  padding: 16px; border: 0; border-radius: var(--r-lg); color: #fff;
+  background: linear-gradient(135deg, #16a34a, #0d9488 55%, #eab308); box-shadow: 0 16px 34px -16px rgb(13 148 136 / 75%);
+  transition: transform 0.2s var(--spring);
+}
+.plan-banner:active { transform: scale(0.97); }
+.plan-banner b { display: block; font: 800 1.1rem var(--font-display); }
+.plan-banner small { opacity: 0.92; font-weight: 600; }
+.plan-banner .q-ai { background: rgb(255 255 255 / 28%); }
+.plan-banner-emoji { flex: none; width: 54px; height: 54px; border-radius: 18px; display: grid; place-items: center; background: rgb(255 255 255 / 20%); font-family: var(--font-emoji); font-size: 1.8rem; animation: bob 3s ease-in-out infinite; }
+.store-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.store-btn {
+  display: grid; justify-items: center; gap: 2px; padding: 10px 4px; border-radius: 16px;
+  border: 2px solid var(--line); background: var(--surface); font-size: 0.8rem; font-weight: 800; color: var(--ink);
+  transition: transform 0.2s var(--spring), border-color 0.2s;
+}
+.store-btn span { font-family: var(--font-emoji); font-size: 1.1rem; }
+.store-btn:active { transform: scale(0.94); }
+.store-btn[aria-pressed='true'] { border-color: var(--brand); background: var(--brand-soft); }
+.store-any { grid-column: span 4; grid-auto-flow: column; justify-content: center; gap: 8px; }
+.plan-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.plan-stats div { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; align-items: center; padding: 10px 12px; border-radius: 16px; background: var(--surface-2); }
+.plan-stats span { grid-row: span 2; font-family: var(--font-emoji); font-size: 1.4rem; }
+.plan-stats b { font: 800 1.1rem var(--font-display); }
+.plan-stats small { color: var(--muted); font-size: 0.72rem; font-weight: 700; }
+.plan-summary .sheet-actions, .shop-head .sheet-actions { flex-wrap: wrap; }
+.plan-summary .sheet-actions .btn, .shop-head .sheet-actions .btn { flex: 1 1 auto; }
+.cover-bar { height: 10px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+.cover-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #16a34a, #eab308, #f97316); transition: width 0.9s var(--ease); }
+.view-in .plan-meal { animation-delay: calc(var(--i, 0) * 70ms); }
+.plan-emoji { width: 52px; height: 52px; font-size: 1.7rem; }
+.plan-macros { display: flex; flex-wrap: wrap; gap: 6px; }
+.plan-macros span { padding: 4px 10px; border-radius: 999px; background: var(--surface-2); font-size: 0.8rem; font-weight: 700; color: var(--ink-2); }
+.plan-details { border-radius: var(--r); background: var(--surface-2); padding: 2px 14px; }
+.plan-details[open] { padding-bottom: 14px; }
+.plan-details summary { min-height: 44px; display: flex; align-items: center; font-weight: 800; font-size: 0.88rem; cursor: pointer; list-style: none; }
+.plan-details summary::-webkit-details-marker { display: none; }
+.plan-details .rows { margin-bottom: 10px; }
+.shop-progress { display: flex; align-items: center; gap: 12px; }
+.shop-pct { font: 800 1.6rem var(--font-display); background: linear-gradient(135deg, #16a34a, #eab308); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.shop-group h3 { font-size: 1rem; }
+.shop-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; transition: opacity 0.3s; }
+.shop-item.is-done { opacity: 0.5; }
+.shop-item.is-done .row-main b { text-decoration: line-through; }
+.shop-check {
+  flex: none; width: 32px; height: 32px; border-radius: 10px; border: 2px solid var(--line);
+  background: var(--surface); color: transparent; font-weight: 900; display: grid; place-items: center;
+  transition: transform 0.25s var(--spring), background 0.2s;
+}
+.shop-check[aria-pressed='true'] { background: linear-gradient(135deg, #34d399, #059669); border-color: transparent; color: #fff; animation: jelly 0.45s var(--spring); }
+.shop-price { flex: none; font: 800 0.9rem var(--font-display); color: var(--ink-2); }
+.shop-link { font-family: var(--font-emoji); text-decoration: none; font-size: 1rem; }
+.shop-item .icon-btn { width: 34px; height: 34px; }
+.shop-item .row-main b { overflow-wrap: break-word; }
+a.chip { text-decoration: none; color: var(--ink); }
+
 /* ---------- Schmale Bildschirme ---------- */
 @media (max-width: 420px) {
   .dish-log { width: 44px; height: 44px; padding: 0; }
   .dish-log span { display: none; }
 }
 @media (max-width: 400px) {
+  .quick-btn { font-size: 0.7rem; padding: 12px 2px 10px; }
+  .q-emoji { font-size: 1.5rem; }
+  .store-btn { font-size: 0.72rem; }
   h1 { font-size: 1.65rem; }
   .hero-main { grid-template-columns: 1fr; justify-items: center; }
   .hero-stats { width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); }

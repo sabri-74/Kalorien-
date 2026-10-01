@@ -24,6 +24,8 @@ export function defaultState() {
     activeWorkout: null,
     fasting: { start: null, goalH: 16, last: null, longestH: 0 },
     badges: [], // bereits gefeierte Abzeichen
+    mealPlan: null, // KI-Essensplan
+    shopping: [], // Einkaufsliste
   };
 }
 
@@ -64,7 +66,7 @@ export function migrate(data) {
   const base = defaultState();
   const state = { ...base, ...data, settings: { ...base.settings, ...(data.settings || {}) }, fasting: { ...base.fasting, ...(data.fasting || {}) }, version: 2 };
   if (!Array.isArray(state.badges)) state.badges = [];
-  for (const key of ['customFoods', 'recentFoods', 'favorites', 'dishes', 'weights']) {
+  for (const key of ['customFoods', 'recentFoods', 'favorites', 'dishes', 'weights', 'shopping']) {
     if (!Array.isArray(state[key])) state[key] = [];
   }
   for (const key of Object.keys(state.days || {})) {
