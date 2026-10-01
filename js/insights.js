@@ -115,6 +115,7 @@ export function suggestFits({ remainingKcal, proteinGap, meal, pool, limit = 6 }
       if (proteinGap > 15) score += Math.min(0.8, (p.protein / Math.max(1, p.kcal)) * 100 * 0.07);
       if (cats.includes(p.category)) score += 0.35;
       if (p.kind === 'dish') score += 0.4;
+      if (p.liked) score += 0.5;
       return { ...p, score };
     })
     .sort((a, b) => b.score - a.score);

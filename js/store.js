@@ -26,6 +26,7 @@ export function defaultState() {
     badges: [], // bereits gefeierte Abzeichen
     mealPlan: null, // KI-Essensplan
     shopping: [], // Einkaufsliste
+    prefs: { likes: [], dislikes: [] }, // Vorlieben
   };
 }
 
@@ -66,6 +67,7 @@ export function migrate(data) {
   const base = defaultState();
   const state = { ...base, ...data, settings: { ...base.settings, ...(data.settings || {}) }, fasting: { ...base.fasting, ...(data.fasting || {}) }, version: 2 };
   if (!Array.isArray(state.badges)) state.badges = [];
+  state.prefs = { likes: [], dislikes: [], ...(data.prefs || {}) };
   for (const key of ['customFoods', 'recentFoods', 'favorites', 'dishes', 'weights', 'shopping']) {
     if (!Array.isArray(state[key])) state[key] = [];
   }

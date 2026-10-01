@@ -6,6 +6,7 @@ import { FOODS } from '../foods.js';
 import { STRENGTH_MET } from '../exercises.js';
 import { aiStatus, AI_MODEL } from '../ai.js';
 import { confetti } from '../fx.js';
+import { prefsCardHtml } from './prefs.js';
 
 const opt = (obj, val) => Object.entries(obj).map(([k, v]) => `<option value="${k}" ${k === val ? 'selected' : ''}>${esc(v.label)}</option>`).join('');
 
@@ -43,6 +44,8 @@ views.profile = (root) => {
         <button class="btn btn-primary btn-block">Speichern</button>
       </form>
     </article>
+
+    ${prefsCardHtml()}
 
     <article class="card" id="ai-settings">
       <h3>✨ KI-Erkennung</h3>

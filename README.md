@@ -6,6 +6,12 @@ Deine Daten bleiben auf deinem Gerät.
 
 ## Funktionen
 
+**Vorlieben** 🍽️
+- Eintippen, was du **gern isst** (😋) und was du **nicht isst / nicht verträgst** (🚫) – z. B. „Pilze, Fisch und Laktose“.
+- Oberbegriffe werden verstanden: „Pilze“ erkennt Champignons, „Laktose“ Milch, Käse, Quark usw., „Fisch“ Lachs, Thunfisch …
+- Beachtet im KI-Essensplan, Kühlschrank-Chef, Speisekarten-Scanner und bei „Passt noch rein“; in der Suche markiert.
+- Sicherheitsnetz: Plant die KI trotzdem etwas Unerwünschtes ein, lässt die App den Tag automatisch neu planen.
+
 **Essensplan & Einkaufsliste** 🛒
 - 🗓️ **KI-Essensplaner**: Gerichte für 1, 3 oder 7 Tage (Frühstück, Mittag, Abend, Snack), die deinen
   Tagesbedarf an Kalorien und Eiweiß decken – mit Zutaten, Kochschritten, Zeit und Kosten pro Portion.

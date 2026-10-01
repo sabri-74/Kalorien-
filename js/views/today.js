@@ -7,6 +7,7 @@ import { MEAL_META, CARDIO_EMOJI, MOODS } from '../emoji.js';
 import * as I from '../insights.js';
 import { countUp, ringFrom, playRings, confetti } from '../fx.js';
 import { pickFood, pickDish } from './food.js';
+import { prefFlags } from './prefs.js';
 
 // Empfohlene Verteilung der Tageskalorien auf die Mahlzeiten
 const MEAL_SHARE = { breakfast: 0.25, lunch: 0.35, dinner: 0.3, snacks: 0.1 };
@@ -157,7 +158,9 @@ function fitsSection(t, eaten, burned) {
       return { id: f.id, name: f.name, category: f.category, kcal: Math.round((f.kcal * g) / 100), protein: Math.round((f.protein * g) / 10) / 10, amount: g, unit: 'g', kind: 'food' };
     }),
   ];
-  const fits = I.suggestFits({ remainingKcal: remaining, proteinGap: t.protein - eaten.protein, meal, pool });
+  // Vorlieben: Unerwünschtes raus, Lieblingsessen bevorzugen
+  const filtered = pool.map((p) => ({ ...p, ...prefFlags(p.name) })).filter((p) => !p.disliked);
+  const fits = I.suggestFits({ remainingKcal: remaining, proteinGap: t.protein - eaten.protein, meal, pool: filtered });
   if (!fits.length) return '';
   return `
     <section class="fits">
@@ -168,7 +171,7 @@ function fitsSection(t, eaten, burned) {
             ${avatar(f.name, f.photo, f.category)}
             <b>${esc(f.name)}</b>
             <small>${f.unit === 'portion' ? '1 Portion' : `${fmt(f.amount)} g`} · ${fmt(f.kcal)} kcal</small>
-            <span class="fit-protein">💪 ${fmt(f.protein)} g</span>
+            <span class="fit-protein">💪 ${fmt(f.protein)} g${f.liked ? ' · 😋' : ''}</span>
           </button>`,
         )
         .join('')}</div>

@@ -1132,6 +1132,26 @@ dialog.onboard::backdrop { background: var(--bg); }
 .shop-item .row-main b { overflow-wrap: break-word; }
 a.chip { text-decoration: none; color: var(--ink); }
 
+/* ---------- Vorlieben ---------- */
+.pref-block { display: grid; gap: 10px; padding: 14px; border-radius: var(--r); }
+.pref-like { background: color-mix(in srgb, #10b981 12%, var(--surface)); }
+.pref-dislike { background: color-mix(in srgb, #f43f5e 11%, var(--surface)); }
+.pref-title { font: 800 0.98rem var(--font-display); }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 8px 6px 12px; border: 0; border-radius: 999px;
+  font-weight: 800; font-size: 0.86rem; color: #fff; animation: pop 0.35s var(--spring);
+}
+.pref-like .tag { background: linear-gradient(135deg, #10b981, #059669); }
+.pref-dislike .tag { background: linear-gradient(135deg, #fb7185, #e11d48); }
+.tag i { font-style: normal; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: rgb(255 255 255 / 25%); font-size: 0.65rem; }
+.pref-block .search-inline input { background: var(--surface); }
+.pref-suggest .chip { padding: 5px 11px; font-size: 0.8rem; }
+.pref-badge { display: inline-block; margin-left: 4px; padding: 0 7px; border-radius: 999px; font-size: 0.7rem; font-weight: 800; vertical-align: 1px; }
+.pref-no { background: var(--bad-soft); color: var(--bad); }
+.pref-yes { background: var(--good-soft); }
+.pref-summary { padding: 8px 12px; border-radius: var(--r-sm); background: var(--surface-2); }
+
 /* ---------- Schmale Bildschirme ---------- */
 @media (max-width: 420px) {
   .dish-log { width: 44px; height: 44px; padding: 0; }

@@ -8,6 +8,7 @@ import {
 } from '../core.js';
 import { FOODS, CATEGORIES, searchFoods } from '../foods.js';
 import { burnEquivalents } from '../insights.js';
+import { prefFlags } from './prefs.js';
 
 const fs = { meal: 'breakfast', query: '', cat: null, item: null, amount: 100, editing: null, online: [], onlineFor: '' };
 
@@ -41,11 +42,16 @@ function searchHtml() {
     <div id="add-results" class="add-results"></div>`;
 }
 
+function prefTag(name) {
+  const p = prefFlags(name);
+  return p.disliked ? ' <span class="pref-badge pref-no">🚫 isst du nicht</span>' : p.liked ? ' <span class="pref-badge pref-yes">😋</span>' : '';
+}
+
 function foodRow(f) {
   const portion = f.portion && f.portionLabel ? ` · 1 ${esc(f.portionLabel)} = ${fmt(f.portion)} g` : '';
   return `<li><button class="row" data-action="pick-food" data-id="${esc(f.id)}">
     ${avatar(f.name, null, f.category)}
-    <span class="row-main"><b>${esc(f.name)}${isFav(f.id) ? ` <span class="fav-dot" aria-label="Favorit">${icon('star')}</span>` : ''}</b><small>${f.brand ? `${esc(f.brand)} · ` : ''}${fmt(f.kcal)} kcal / 100 g${portion}</small></span>
+    <span class="row-main"><b>${esc(f.name)}${prefTag(f.name)}${isFav(f.id) ? ` <span class="fav-dot" aria-label="Favorit">${icon('star')}</span>` : ''}</b><small>${f.brand ? `${esc(f.brand)} · ` : ''}${fmt(f.kcal)} kcal / 100 g${portion}</small></span>
     <span class="row-add" aria-hidden="true">${icon('plus')}</span>
   </button></li>`;
 }

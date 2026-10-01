@@ -8,6 +8,7 @@ import {
 import { analyzeMenu, fridgeChef, aiStatus, aiErrorText } from '../ai.js';
 import { prepareImage, putPhoto } from '../photos.js';
 import { confetti } from '../fx.js';
+import { prefs, prefsSummaryHtml } from './prefs.js';
 
 const tool = { kind: 'menu', blob: null, thumb: null, text: '', wish: '', result: null, controller: null };
 
@@ -45,6 +46,7 @@ function introHtml() {
       <div><h3>${m.title}</h3><p>${m.intro}</p></div>
     </div>
     <div class="chips chips-wrap"><span class="pill pill-info">🎯 noch ${fmt(b.kcal)} kcal</span><span class="pill pill-info">💪 noch ${fmt(b.protein)} g Eiweiß</span></div>
+    ${prefsSummaryHtml()}
     <div id="tool-provider"></div>
     <div class="grid-2" data-needs-images>
       <button class="big-choice" data-action="tool-photo" data-capture="1"><span aria-hidden="true">📸</span><b>Foto aufnehmen</b></button>
@@ -125,7 +127,7 @@ async function run() {
   if (!document.querySelector('#sheet').open) openSheet(META[tool.kind].title, '', { onClose: () => tool.controller?.abort() });
   setSheet(META[tool.kind].title, loadingHtml());
   tool.controller = new AbortController();
-  const args = { apiKey: store.state.settings.apiKey, image: tool.blob, text: tool.text, budget: budget(), signal: tool.controller.signal };
+  const args = { apiKey: store.state.settings.apiKey, image: tool.blob, text: tool.text, budget: budget(), prefs: prefs(), signal: tool.controller.signal };
   try {
     if (tool.kind === 'menu') {
       tool.result = await analyzeMenu(args);

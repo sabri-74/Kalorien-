@@ -8,6 +8,8 @@ import { createMealPlanDay, aiStatus, aiErrorText } from '../ai.js';
 import * as P from '../mealplan.js';
 import { MEAL_META } from '../emoji.js';
 import { confetti } from '../fx.js';
+import { prefsCardHtml, prefs } from './prefs.js';
+import { mealConflicts } from '../prefs.js';
 
 const pl = { sub: 'plan', day: 0, form: null, busy: false, error: '', controller: null };
 const euro = (v) => `${Number(v || 0).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
@@ -75,7 +77,7 @@ function formHtml() {
       </div>
       ${pl.error ? `<div class="notice"><b>🙈 Das hat nicht geklappt</b><p>${esc(pl.error)}</p></div>` : ''}
       <div id="plan-provider"></div>
-      <form class="stack" data-form="plan-create">
+      <form class="stack" data-form="plan-create" id="plan-form">
         <div class="field"><span>Für wie viele Tage?</span>
           <div class="seg seg-block">${[1, 3, 7].map((n) => `<button type="button" data-action="plan-set" data-k="days" data-v="${n}" aria-pressed="${f.days === n}">${n} ${n === 1 ? 'Tag' : 'Tage'}</button>`).join('')}</div>
         </div>
@@ -91,11 +93,14 @@ function formHtml() {
           </div>
         </div>
         <label class="field">Wünsche (optional)<input id="plan-wish" value="${esc(f.wish)}" placeholder="z. B. viel Hähnchen, keine Pilze, Meal-Prep"></label>
-        <button class="btn btn-primary btn-lg btn-block">✨ Plan erstellen</button>
-        ${store.state.mealPlan ? '<button type="button" class="btn btn-ghost btn-block" data-action="plan-cancel-form">Zurück zum aktuellen Plan</button>' : ''}
-        <p class="hint center">Preise sind Schätzungen der KI für typische Eigenmarken – im Laden können sie abweichen.</p>
       </form>
-    </article>`;
+    </article>
+    ${prefsCardHtml()}
+    <div class="stack">
+      <button class="btn btn-primary btn-lg btn-block" form="plan-form">✨ Plan erstellen</button>
+      ${store.state.mealPlan ? '<button type="button" class="btn btn-ghost btn-block" data-action="plan-cancel-form">Zurück zum aktuellen Plan</button>' : ''}
+      <p class="hint center">Preise sind Schätzungen der KI für typische Eigenmarken – im Laden können sie abweichen.</p>
+    </div>`;
 }
 
 actions['plan-set'] = (d) => {
@@ -151,13 +156,21 @@ async function generateDay(plan, i) {
   delete d.error;
   const f = plan.params;
   try {
-    const raw = await createMealPlanDay({
+    const ask = (avoidNote) => createMealPlanDay({
       apiKey: store.state.settings.apiKey, signal: pl.controller?.signal,
       index: i, days: plan.days.length, store: f.store, storeLabel: P.STORES[f.store].label, budget: f.budget,
-      diet: f.diet, dietLabel: P.DIETS[f.diet], wish: f.wish, targets: plan.targets,
+      diet: f.diet, dietLabel: P.DIETS[f.diet], wish: f.wish, targets: plan.targets, prefs: plan.prefs, avoidNote,
     });
-    const day = P.normalizeDay(raw, d.title);
+    const check = (dd) => dd?.meals.flatMap((m) => mealConflicts(m, plan.prefs?.dislikes)) || [];
+    let day = P.normalizeDay(await ask(), d.title);
     if (!day) throw Object.assign(new Error('leer'), { code: 'invalid' });
+    // Sicherheitsnetz: enthält der Plan etwas, das man nicht isst, einmal neu planen lassen
+    const bad = [...new Set(check(day))];
+    if (bad.length) {
+      const again = P.normalizeDay(await ask(`Der letzte Vorschlag enthielt ${bad.join(', ')} – das isst die Person NICHT. Ersetze es vollständig.`), d.title);
+      if (again && check(again).length < bad.length) day = again;
+    }
+    for (const m of day.meals) m.conflicts = mealConflicts(m, plan.prefs?.dislikes);
     Object.assign(d, day, { status: 'ok', seconds: Math.round((Date.now() - d.started) / 1000) });
     if (!plan.tip && day.tip) plan.tip = day.tip;
   } catch (e) {
@@ -198,7 +211,7 @@ forms['plan-create'] = async () => {
   }
   const s = store.state;
   const plan = {
-    params: { ...f }, targets: targets(), createdAt: Date.now(), tip: '',
+    params: { ...f }, targets: targets(), prefs: JSON.parse(JSON.stringify(prefs())), createdAt: Date.now(), tip: '',
     days: Array.from({ length: f.days }, (_, i) => ({ title: dayTitle(i), status: 'pending', meals: [] })),
   };
   s.mealPlan = plan;
@@ -296,6 +309,7 @@ function mealHtml(m, i) {
         <p class="eyebrow">${MEAL_META[m.slot]?.emoji || ''} ${P.SLOTS[m.slot]}</p>
         <h3>${esc(m.name)}</h3>
         <p class="sub">⏱️ ${fmt(m.minutes)} Min. · 💶 ca. ${euro(m.price)}</p>
+        ${m.conflicts?.length ? `<p class="pill pill-bad">⚠️ Enthält ${esc(m.conflicts.join(', '))} – lieber austauschen</p>` : ''}
       </div>
     </header>
     <div class="plan-macros"><span>🔥 <b>${fmt(m.kcal)}</b> kcal</span><span>💪 ${fmt(m.protein)} g</span><span>🍞 ${fmt(m.carbs)} g</span><span>🥑 ${fmt(m.fat)} g</span></div>

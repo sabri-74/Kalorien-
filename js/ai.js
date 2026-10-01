@@ -5,6 +5,7 @@
 // Build-Tools, daher per fetch statt SDK).
 
 import { normalizeAiResult } from './calc.js';
+import { prefsPrompt } from './prefs.js';
 
 export const AI_MODEL = 'claude-opus-5-5';
 const API_URL = 'https://api.anthropic.com/v1/messages';
@@ -301,9 +302,9 @@ const MENU_SCHEMA = {
  * Empfiehlt Gerichte von einer Speisekarte passend zum Restbudget.
  * Liefert { tip, picks: [{ emoji, name, kcal, protein, carbs, fat, why, fits }] }.
  */
-export async function analyzeMenu({ apiKey, image, text, budget, signal }) {
+export async function analyzeMenu({ apiKey, image, text, budget, prefs, signal }) {
   const prompt = `Du bist eine Ernährungsberaterin und hilfst beim Bestellen im Restaurant.
-Die Person hat heute noch ${Math.round(budget.kcal)} kcal übrig und braucht noch etwa ${Math.round(budget.protein)} g Eiweiß. Ihr Ziel: ${budget.goal}.
+Die Person hat heute noch ${Math.round(budget.kcal)} kcal übrig und braucht noch etwa ${Math.round(budget.protein)} g Eiweiß. Ihr Ziel: ${budget.goal}.${prefsPrompt(prefs)} Empfiehl nichts, was sie nicht isst.
 ${image ? 'Auf dem Foto ist eine Speisekarte.' : ''}${text ? ` Speisekarte bzw. Auswahl: "${text}"` : ''}
 Wähle die 3 bis 5 besten Gerichte von dieser Karte aus (nur Gerichte, die wirklich draufstehen). Schätze pro übliche Restaurantportion kcal, Eiweiß, Kohlenhydrate und Fett in Gramm. Sortiere die beste Wahl nach oben.
 "why": ein kurzer, freundlicher Satz auf Deutsch, warum es passt, gern mit einem Bestelltipp (z. B. "Dressing extra bestellen").
@@ -366,11 +367,11 @@ const RECIPE_SCHEMA = {
  * Schlägt aus vorhandenen Zutaten ein Rezept vor, das ins Budget passt.
  * Liefert { emoji, name, minutes, servings, ingredients: [{ name, amount, base }], steps, tip }.
  */
-export async function fridgeChef({ apiKey, image, text, wish, budget, signal }) {
+export async function fridgeChef({ apiKey, image, text, wish, budget, prefs, signal }) {
   const prompt = `Du bist eine kreative Köchin mit Ernährungswissen.
 ${image ? 'Auf dem Foto siehst du, was im Kühlschrank bzw. in der Küche vorhanden ist.' : ''}${text ? ` Vorhandene Zutaten: "${text}".` : ''}
 ${wish ? `Wunsch: "${wish}".` : ''}
-Die Person hat heute noch ${Math.round(budget.kcal)} kcal übrig und braucht noch ${Math.round(budget.protein)} g Eiweiß. Ziel: ${budget.goal}.
+Die Person hat heute noch ${Math.round(budget.kcal)} kcal übrig und braucht noch ${Math.round(budget.protein)} g Eiweiß. Ziel: ${budget.goal}.${prefsPrompt(prefs)}
 Schlage EIN leckeres, einfaches Rezept für 1 Portion vor, das hauptsächlich die vorhandenen Zutaten nutzt (Grundzutaten wie Salz, Pfeffer, Gewürze, wenig Öl dürfen dazu). Eine Portion soll möglichst ins Restbudget passen und eiweißreich sein.
 Gib für jede Zutat die Menge in Gramm und die Nährwerte FÜR DIESE MENGE an. 3 bis 7 kurze Kochschritte auf Deutsch. "minutes" = Zubereitungszeit. "tip" = ein Satz mit einem Profi-Tipp.
 Antworte nur mit JSON: {"emoji": "🍳", "name": "…", "minutes": 15, "servings": 1, "ingredients": [{"name": "…", "grams": 100, "kcal": 150, "protein": 12, "carbs": 5, "fat": 9}], "steps": ["…"], "tip": "…"}`;
@@ -452,7 +453,7 @@ export function mealPlanDayPrompt(o) {
   const storeText = o.store === 'any' ? 'beim jeweils günstigsten Discounter (Aldi, Lidl, Netto, Penny, Kaufland)' : `bei ${o.storeLabel}`;
   return `Du bist Ernährungsberaterin und Spar-Expertin für deutsche Supermärkte. Plane EINEN Tag für eine Person (Tag ${o.index + 1} von ${o.days}, Küchenstil: ${THEMES[o.index % THEMES.length]}).
 Tagesziel: ${Math.round(o.targets.kcal)} kcal (±5 %), mindestens ${Math.round(o.targets.protein)} g Eiweiß, ca. ${Math.round(o.targets.carbs)} g Kohlenhydrate, ${Math.round(o.targets.fat)} g Fett.
-Ernährung: ${o.dietLabel}.${o.wish ? ` Wünsche: ${o.wish}.` : ''} Budget: höchstens ${o.budget.toFixed(2)} € für den Tag. Einkauf ${storeText}.
+Ernährung: ${o.dietLabel}.${prefsPrompt(o.prefs)}${o.wish ? ` Wünsche: ${o.wish}.` : ''}${o.avoidNote ? ` WICHTIG: ${o.avoidNote}` : ''} Budget: höchstens ${o.budget.toFixed(2)} € für den Tag. Einkauf ${storeText}.
 Genau 4 Mahlzeiten mit slot breakfast, lunch, dinner, snacks – einfach, max. 25 Minuten.
 Je Mahlzeit: kcal, protein, carbs, fat und price (€) für die Portion; 3 bis 6 Zutaten mit amount (z. B. "80 g"), buy = konkrete günstige Packung als Eigenmarke (z. B. "Milbona Skyr 450 g"), store (Lidl, Aldi, Kaufland, Netto, Penny, REWE oder Edeka), price = Packungspreis in €, section (obst, fleisch, kuehl, brot, vorrat, tk, sonst); höchstens 3 kurze Schritte. tip = ein Spartipp in einem Satz.
 Alles auf Deutsch. Antworte nur mit JSON:
