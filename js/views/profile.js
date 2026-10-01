@@ -7,6 +7,7 @@ import { STRENGTH_MET } from '../exercises.js';
 import { aiStatus, AI_MODEL } from '../ai.js';
 import { confetti } from '../fx.js';
 import { prefsCardHtml } from './prefs.js';
+import { paletteHtml } from './fun.js';
 
 const opt = (obj, val) => Object.entries(obj).map(([k, v]) => `<option value="${k}" ${k === val ? 'selected' : ''}>${esc(v.label)}</option>`).join('');
 
@@ -67,6 +68,8 @@ views.profile = (root) => {
       <div class="seg" role="group" aria-label="Farbschema">
         ${[['system', '🌗 Auto'], ['light', '☀️ Hell'], ['dark', '🌙 Dunkel']].map(([id, l]) => `<button data-action="theme" data-id="${id}" aria-pressed="${s.settings.theme === id}">${l}</button>`).join('')}
       </div>
+      <p class="eyebrow">Farbwelt</p>
+      ${paletteHtml()}
     </article>
 
     <article class="card">

@@ -69,6 +69,28 @@ export function playRings(root = document) {
   requestAnimationFrame(() =>
     requestAnimationFrame(() => {
       root.querySelectorAll('[data-ring-to]').forEach((c) => c.setAttribute('stroke-dasharray', c.dataset.ringTo));
+      root.querySelectorAll('[data-p-to]').forEach((c) => c.style.setProperty('--p', c.dataset.pTo));
     }),
   );
+}
+
+/** Leichter 3D-Kippeffekt bei Berührung bzw. Mausbewegung. */
+export function tilt(el) {
+  if (!el || reduced() || el.dataset.tilt) return;
+  el.dataset.tilt = '1';
+  const move = (ev) => {
+    const r = el.getBoundingClientRect();
+    const x = (ev.clientX - r.left) / r.width - 0.5;
+    const y = (ev.clientY - r.top) / r.height - 0.5;
+    el.style.transform = `perspective(900px) rotateX(${(-y * 7).toFixed(2)}deg) rotateY(${(x * 9).toFixed(2)}deg)`;
+    el.style.setProperty('--mx', `${(x + 0.5) * 100}%`);
+    el.style.setProperty('--my', `${(y + 0.5) * 100}%`);
+  };
+  const reset = () => {
+    el.style.transform = '';
+  };
+  el.addEventListener('pointermove', move);
+  el.addEventListener('pointerleave', reset);
+  el.addEventListener('pointerup', reset);
+  el.addEventListener('pointercancel', reset);
 }

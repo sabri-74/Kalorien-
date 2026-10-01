@@ -14,7 +14,7 @@ export function defaultState() {
   return {
     version: 2,
     profile: null, // { name, sex, age, height, weight, activity, goal, targetWeight }
-    settings: { theme: 'system', customKcal: null, apiKey: '' },
+    settings: { theme: 'system', palette: 'sunset', customKcal: null, apiKey: '' },
     customFoods: [],
     recentFoods: [], // Lebensmittel-Objekte, neueste zuerst
     favorites: [], // Lebensmittel-Objekte

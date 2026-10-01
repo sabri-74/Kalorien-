@@ -6,6 +6,14 @@ Deine Daten bleiben auf deinem Gerät.
 
 ## Funktionen
 
+**Level, Challenges & Spaß** 🎮
+- ⭐ **Level & XP**: Punkte für Mahlzeiten, Kalorienziel, Eiweiß, Wasser, Training und Abzeichen – von 🌱 Anfänger bis ⚡ Gottmodus.
+- 🏆 **Wochen-Challenges** (Hydro-Woche, Eiweiß-Power, Beweg dich, Zielgenau, Dranbleiber) mit Fortschritt und XP-Belohnung.
+- 🎁 **Wochen-Rückblick** als animierte Story: Kalorien, Tage im Ziel, Lieblingsessen, Wasser, Training, bester Tag – zum Teilen.
+- 🎡 **Glücksrad „Was esse ich?“**: dreht sich und schlägt ein Gericht vor, das ins Restbudget passt und deine Vorlieben beachtet.
+- 🎨 **6 Farbwelten**: Sunset, Ozean, Dschungel, Candy, Galaxie, Feuer – die ganze App färbt sich um.
+- ✨ Schimmernder Kalorien-Ring, leuchtende Kartenränder, 3D-Effekt beim Berühren der Budget-Karte.
+
 **Vorlieben** 🍽️
 - Eintippen, was du **gern isst** (😋) und was du **nicht isst / nicht verträgst** (🚫) – z. B. „Pilze, Fisch und Laktose“.
 - Oberbegriffe werden verstanden: „Pilze“ erkennt Champignons, „Laktose“ Milch, Käse, Quark usw., „Fisch“ Lachs, Thunfisch …
@@ -132,6 +140,7 @@ die Übernahme von Daten aus der ersten App-Version und die Konsistenz der Leben
 | `js/charts.js`, `js/icons.js` | SVG-Diagramme und Icons ohne Bibliothek |
 | `js/insights.js` | Tages-Score, Buddy-Tipps, Vorschläge, Prognose, Abzeichen (getestet) |
 | `js/emoji.js`, `js/fx.js` | Emoji-Zuordnung, Konfetti und Animationen |
+| `js/game.js`, `js/views/fun.js` | Level, XP, Challenges, Rückblick, Glücksrad, Farbwelten (Logik getestet) |
 | `js/mealplan.js`, `js/views/plan.js` | Essensplan und Einkaufsliste (Logik getestet) |
 | `sw.js`, `manifest.webmanifest` | Offline-Betrieb und Installation als App |
 

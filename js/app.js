@@ -1,4 +1,4 @@
-import { store, ui, C, $, $$, actions, forms, inputs, views, setRenderer, afterRender, onSheetClosed, save } from './core.js';
+import { store, ui, C, $, $$, actions, forms, inputs, views, setRenderer, afterRender, onSheetClosed, save, openSheet } from './core.js';
 import './views/today.js';
 import './views/food.js';
 import './views/scan.js';
@@ -7,6 +7,7 @@ import './views/training.js';
 import './views/stats.js';
 import './views/aitools.js';
 import './views/plan.js';
+import { checkLevelUp, paletteHtml } from './views/fun.js';
 import { checkBadges } from './views/rewards.js';
 import { openOnboarding } from './views/profile.js';
 import { stopScan } from './views/food.js';
@@ -17,6 +18,7 @@ function applyTheme() {
   const t = store.state.settings.theme;
   if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
   else delete document.documentElement.dataset.theme;
+  document.documentElement.dataset.palette = store.state.settings.palette || 'sunset';
 }
 
 function render() {
@@ -30,7 +32,10 @@ function render() {
   views[ui.tab]?.(root);
   afterRender(root);
   clearTimeout(badgeTimer);
-  badgeTimer = setTimeout(checkBadges, 1400);
+  badgeTimer = setTimeout(() => {
+    checkBadges();
+    checkLevelUp();
+  }, 1400);
 }
 let badgeTimer;
 setRenderer(render);
@@ -59,6 +64,7 @@ function animateIn() {
 }
 
 actions['close-sheet'] = () => $('#sheet').close();
+actions['palette-open'] = () => openSheet('🎨 Farbwelt', `<p class="hint">Wähl deine Lieblingsfarben – die ganze App passt sich an.</p>${paletteHtml()}`);
 
 actions.goto = (d) => {
   if ($('#sheet').open) $('#sheet').close();

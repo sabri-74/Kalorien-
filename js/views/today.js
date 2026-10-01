@@ -8,6 +8,8 @@ import * as I from '../insights.js';
 import { countUp, ringFrom, playRings, confetti } from '../fx.js';
 import { pickFood, pickDish } from './food.js';
 import { prefFlags } from './prefs.js';
+import { levelChipHtml, challengesCardHtml } from './fun.js';
+import { tilt } from '../fx.js';
 
 // Empfohlene Verteilung der Tageskalorien auf die Mahlzeiten
 const MEAL_SHARE = { breakfast: 0.25, lunch: 0.35, dinner: 0.3, snacks: 0.1 };
@@ -76,16 +78,8 @@ function hero(t, eaten, burned, score) {
         </button>
       </div>
       <div class="hero-main">
-        <div class="ring-xl">
-          <svg viewBox="0 0 160 160" aria-hidden="true">
-            <defs>
-              <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#fff7c2"/><stop offset="100%" stop-color="#ffffff"/>
-              </linearGradient>
-            </defs>
-            <circle class="track" cx="80" cy="80" r="${R}"></circle>
-            <circle class="fill" cx="80" cy="80" r="${R}" stroke="url(#ringGrad)" stroke-dasharray="${from * CIRC} ${CIRC}" data-ring-to="${frac * CIRC} ${CIRC}"></circle>
-          </svg>
+        <div class="ring-xl ring-conic ${over ? 'is-over' : ''}" style="--p:${from}" data-p-to="${frac}">
+          <span class="ring-glow" aria-hidden="true"></span>
           <div class="ring-center">
             <span class="ring-emoji" aria-hidden="true">${over ? '😅' : frac > 0.85 ? '🎯' : frac > 0.4 ? '😋' : '🍽️'}</span>
             <b class="ring-num" id="ring-num">${fmt(Math.abs(remaining))}</b>
@@ -130,6 +124,10 @@ function quickActions() {
     ['fridge-chef', '', '🧊', 'Kühlschrank', 'q-cyan', true],
     ['plan-open', 'plan', '🗓️', 'Essensplan', 'q-yellow', true],
     ['plan-open', 'list', '🧾', 'Einkauf', 'q-teal', false],
+    ['wheel-open', '', '🎡', 'Glücksrad', 'q-rainbow', false],
+    ['wrapped-open', '', '🎁', 'Rückblick', 'q-violet', false],
+    ['level-open', '', '⭐', 'Level', 'q-yellow', false],
+    ['palette-open', '', '🎨', 'Farbwelt', 'q-pink', false],
   ];
   return `
     <div class="quick" role="group" aria-label="Schnell eintragen">
@@ -344,9 +342,10 @@ views.today = (root) => {
     <header class="page-head">
       <div>
         <p class="eyebrow">📅 ${esc(dateLabel(ui.date, true))}${ui.date !== today ? ` · <button class="link-inline" data-action="pick-day" data-date="${today}">zu heute</button>` : ''}</p>
-        <h1>${esc(C.greeting(now.getHours()))}${p.name && s.profile ? `, ${esc(p.name)}` : ''} <span class="wave-hand" aria-hidden="true">👋</span></h1>
+        <h1>${esc(C.greeting(now.getHours()))}${p.name && s.profile ? `, <span class="grad-text">${esc(p.name)}</span>` : ''} <span class="wave-hand" aria-hidden="true">👋</span></h1>
       </div>
       <div class="head-actions">
+        ${levelChipHtml()}
         <button class="streak-pill ${streak ? '' : 'is-zero'}" data-action="goto" data-tab="stats" aria-label="${streak} Tage Serie"><span aria-hidden="true">🔥</span><b>${streak}</b></button>
         <button class="avatar-btn" data-action="goto" data-tab="profile" aria-label="Profil und Einstellungen">${initial}</button>
       </div>
@@ -361,6 +360,7 @@ views.today = (root) => {
     ${buddy(tip)}
     ${quickActions()}
     ${fitsSection(t, eaten, burned)}
+    ${ui.date === today ? challengesCardHtml() : ''}
     ${S.MEALS.map((m) => mealCard(m, day, yesterday, t)).join('')}
     ${waterCard(day, t)}
     ${ui.date === today ? `<article class="card fast-card"><header class="meal-head"><span class="meal-emoji" aria-hidden="true">⏱️</span><div class="grow"><h3>Intervallfasten</h3><p class="sub">Essenspause mit Live-Timer</p></div></header><div id="fast-box">${fastingHtml()}</div></article>` : ''}
@@ -371,6 +371,7 @@ views.today = (root) => {
   countUp($('#ring-num'), `rem:${ui.date}`, Math.abs(remaining));
   countUp($('#stat-eaten'), `eat:${ui.date}`, eaten.kcal);
   playRings(root);
+  tilt(root.querySelector('.hero'));
 };
 
 // ---------- Fasten-Timer ----------
