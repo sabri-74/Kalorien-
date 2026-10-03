@@ -1195,16 +1195,9 @@ a.chip { text-decoration: none; color: var(--ink); }
   --blob-1: #fca5a5; --blob-2: #fdba74; --blob-3: #fde68a;
 }
 :root[data-palette]:not([data-palette='sunset']) { --brand-soft: color-mix(in srgb, var(--brand) 16%, var(--surface)); }
-.bg-blobs i { opacity: calc(var(--blob-opacity) * 1.25); }
 
 /* ---------- Leuchtende Verlaufs-Ränder ---------- */
 .card { position: relative; }
-.card::after {
-  content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; pointer-events: none;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 55%, transparent), transparent 45%, color-mix(in srgb, var(--accent) 50%, transparent));
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
-}
 .grad-text { --gt: linear-gradient(90deg, var(--brand), var(--accent)); background: var(--gt); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: text-shine 6s ease-in-out infinite alternate; }
 @keyframes text-shine { to { background-position: 100% 0; } }
 :root[data-theme='dark'] .grad-text { --gt: linear-gradient(90deg, color-mix(in srgb, var(--brand) 55%, #fff), color-mix(in srgb, var(--accent) 70%, #fff)); }
@@ -1299,6 +1292,47 @@ dialog.story::backdrop { background: #000; }
 .wheel-win small { display: block; opacity: 0.9; font-weight: 600; }
 .wheel-win b { display: block; font: 800 1.15rem var(--font-display); }
 .wheel-win .btn { background: #fff; color: #3b0764; }
+
+/* =========================================================
+   Aufgeräumt: einheitliche Schnellaktionen, Werkzeug-Übersicht
+   ========================================================= */
+.quick { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.quick-btn, .quick-btn:hover {
+  background: var(--surface); color: var(--ink); box-shadow: var(--shadow);
+  padding: 12px 4px 10px; font-size: 0.8rem; gap: 6px; animation: none;
+}
+.quick-btn .q-emoji {
+  width: 46px; height: 46px; border-radius: 16px; display: grid; place-items: center; font-size: 1.45rem;
+  background: var(--brand-soft);
+}
+.quick-btn.q-primary { background: var(--grad-brand); color: #fff; box-shadow: 0 12px 26px -12px color-mix(in srgb, var(--brand) 80%, transparent); }
+.quick-btn.q-primary .q-emoji { background: rgb(255 255 255 / 22%); }
+.tools-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.tool-card {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; align-items: center; text-align: left;
+  padding: 12px; border: 0; border-radius: var(--r); background: var(--surface-2); color: var(--ink);
+  transition: transform 0.2s var(--spring), background 0.2s;
+}
+.tool-card:hover { background: var(--brand-soft); }
+.tool-card:active { transform: scale(0.96); }
+.tool-emoji { grid-row: span 2; width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center; background: var(--surface); font-family: var(--font-emoji); font-size: 1.3rem; }
+.tool-card b { font-size: 0.88rem; line-height: 1.2; }
+.tool-card small { color: var(--muted); font-size: 0.72rem; font-weight: 600; line-height: 1.25; }
+.level-card {
+  display: flex; gap: 14px; align-items: center; text-align: left; width: 100%;
+  padding: 16px; border: 0; border-radius: var(--r-lg); color: #fff; background: var(--grad-hero); box-shadow: var(--shadow-lg);
+}
+.level-card .grow { display: grid; gap: 3px; }
+.level-card small { opacity: 0.9; font-weight: 700; font-size: 0.78rem; }
+.level-card b { font: 800 1.25rem var(--font-display); }
+.level-card .xp-bar { margin-top: 2px; }
+.level-card-emoji { flex: none; width: 58px; height: 58px; border-radius: 20px; display: grid; place-items: center; background: rgb(255 255 255 / 20%); font-family: var(--font-emoji); font-size: 2rem; }
+.mood-card { gap: 10px; }
+.mood-card h3 { font-size: 0.98rem; }
+.mood { padding: 8px 0 6px; }
+.mood span { font-size: 1.5rem; }
+.buddy-avatar { width: 54px; height: 54px; border-radius: 18px; }
+.buddy-face { font-size: 1.8rem; }
 
 /* ---------- Schmale Bildschirme ---------- */
 @media (max-width: 420px) {

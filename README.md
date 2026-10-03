@@ -6,6 +6,10 @@ Deine Daten bleiben auf deinem Gerät.
 
 ## Funktionen
 
+**Aufbau**: Die Startseite zeigt nur das Tägliche – Kalorien-Ring, Foto/Suchen/Beschreiben, Avos Tipp,
+Mahlzeiten und Wasser. Über **➕ Mehr** erreichst du alle Funktionen sortiert nach KI-Werkzeuge,
+Planen & einkaufen, Gesundheit sowie Erfolge & Spaß. Level, Challenges und Abzeichen stehen unter **Fortschritt**.
+
 **Level, Challenges & Spaß** 🎮
 - ⭐ **Level & XP**: Punkte für Mahlzeiten, Kalorienziel, Eiweiß, Wasser, Training und Abzeichen – von 🌱 Anfänger bis ⚡ Gottmodus.
 - 🏆 **Wochen-Challenges** (Hydro-Woche, Eiweiß-Power, Beweg dich, Zielgenau, Dranbleiber) mit Fortschritt und XP-Belohnung.

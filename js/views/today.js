@@ -8,7 +8,7 @@ import * as I from '../insights.js';
 import { countUp, ringFrom, playRings, confetti } from '../fx.js';
 import { pickFood, pickDish } from './food.js';
 import { prefFlags } from './prefs.js';
-import { levelChipHtml, challengesCardHtml } from './fun.js';
+import { levelChipHtml } from './fun.js';
 import { tilt } from '../fx.js';
 
 // Empfohlene Verteilung der Tageskalorien auf die Mahlzeiten
@@ -116,29 +116,56 @@ function buddy(tip) {
 
 function quickActions() {
   const tiles = [
-    ['ai-open', 'photo', '📸', 'Foto-KI', 'q-orange', true],
-    ['ai-open', 'text', '✨', 'Beschreiben', 'q-violet', true],
-    ['open-add', '', '🔍', 'Suchen', 'q-blue', false],
-    ['goto', 'dishes', '🍲', 'Gerichte', 'q-green', false],
-    ['menu-scan', '', '📋', 'Speisekarte', 'q-pink', true],
-    ['fridge-chef', '', '🧊', 'Kühlschrank', 'q-cyan', true],
-    ['plan-open', 'plan', '🗓️', 'Essensplan', 'q-yellow', true],
-    ['plan-open', 'list', '🧾', 'Einkauf', 'q-teal', false],
-    ['wheel-open', '', '🎡', 'Glücksrad', 'q-rainbow', false],
-    ['wrapped-open', '', '🎁', 'Rückblick', 'q-violet', false],
-    ['level-open', '', '⭐', 'Level', 'q-yellow', false],
-    ['palette-open', '', '🎨', 'Farbwelt', 'q-pink', false],
+    ['ai-open', 'data-mode="photo"', '📸', 'Foto', 'q-primary'],
+    ['open-add', '', '🔍', 'Suchen', ''],
+    ['ai-open', 'data-mode="text"', '✨', 'Beschreiben', ''],
+    ['tools-open', '', '➕', 'Mehr', ''],
   ];
   return `
     <div class="quick" role="group" aria-label="Schnell eintragen">
-      ${tiles
-        .map(
-          ([action, mode, emoji, label, cls, ai]) => `<button class="quick-btn ${cls}" data-action="${action}" ${action === 'goto' ? `data-tab="${mode}"` : action === 'plan-open' ? `data-sub="${mode}"` : mode ? `data-mode="${mode}"` : ''}>
-            <span class="q-emoji" aria-hidden="true">${emoji}</span><span>${label}</span>${ai ? '<span class="q-ai">KI</span>' : ''}
-          </button>`,
-        )
-        .join('')}
+      ${tiles.map(([action, attr, emoji, label, cls]) => `<button class="quick-btn ${cls}" data-action="${action}" ${attr}><span class="q-emoji" aria-hidden="true">${emoji}</span><span>${label}</span></button>`).join('')}
     </div>`;
+}
+
+const TOOL_GROUPS = [
+  ['✨ KI-Werkzeuge', [
+    ['ai-open', 'data-mode="photo"', '📸', 'Foto erkennen', 'Teller fotografieren'],
+    ['ai-open', 'data-mode="text"', '💬', 'Beschreiben', 'Essen in Worten'],
+    ['menu-scan', '', '📋', 'Speisekarte', 'Was bestelle ich?'],
+    ['fridge-chef', '', '🧊', 'Kühlschrank-Chef', 'Rezept aus Resten'],
+  ]],
+  ['🗓️ Planen & einkaufen', [
+    ['plan-open', 'data-sub="plan"', '🗓️', 'Essensplan', 'Gerichte für deinen Bedarf'],
+    ['plan-open', 'data-sub="list"', '🧾', 'Einkaufsliste', 'Abhaken im Laden'],
+    ['goto', 'data-tab="dishes"', '🍲', 'Meine Gerichte', 'Rezepte & Favoriten'],
+    ['wheel-open', '', '🎡', 'Glücksrad', 'Was esse ich?'],
+  ]],
+  ['💚 Gesundheit', [
+    ['fast-open', '', '⏱️', 'Intervallfasten', 'Live-Timer'],
+    ['goto', 'data-tab="training"', '🏃', 'Training', 'Sport eintragen'],
+    ['open-add', 'data-meal="snacks"', '⚡', 'Schnell-Eintrag', 'Nur Kalorien'],
+    ['goto', 'data-tab="profile"', '🍽️', 'Vorlieben', 'Mag ich / mag ich nicht'],
+  ]],
+  ['🎮 Erfolge & Spaß', [
+    ['level-open', '', '⭐', 'Level & XP', 'Dein Fortschritt'],
+    ['wrapped-open', '', '🎁', 'Wochen-Rückblick', 'Deine Woche als Story'],
+    ['goto', 'data-tab="stats"', '🏆', 'Challenges', 'Diese Woche'],
+    ['palette-open', '', '🎨', 'Farbwelt', 'App umfärben'],
+  ]],
+];
+
+actions['tools-open'] = () => {
+  openSheet('Alle Funktionen', TOOL_GROUPS.map(([title, items]) => `<section><h4 class="eyebrow">${title}</h4><div class="tools-grid">${items
+    .map(([action, attr, emoji, label, sub]) => `<button class="tool-card" data-action="${action}" ${attr}><span class="tool-emoji" aria-hidden="true">${emoji}</span><b>${label}</b><small>${sub}</small></button>`)
+    .join('')}</div></section>`).join(''));
+};
+
+actions['fast-open'] = () => {
+  openSheet('⏱️ Intervallfasten', `<p class="hint">Starte den Timer nach deiner letzten Mahlzeit. Läuft er, siehst du ihn auch auf der Startseite.</p><div id="fast-box">${fastingHtml()}</div>`);
+};
+
+function refreshFast() {
+  document.querySelectorAll('#fast-box').forEach((b) => (b.innerHTML = fastingHtml()));
 }
 
 function fitsSection(t, eaten, burned) {
@@ -247,7 +274,6 @@ function moodCard(day) {
       <div class="moods" role="radiogroup" aria-label="Stimmung">
         ${MOODS.map((m) => `<button class="mood" role="radio" aria-checked="${day.mood === m.v}" data-action="set-mood" data-v="${m.v}"><span aria-hidden="true">${m.emoji}</span><small>${m.label}</small></button>`).join('')}
       </div>
-      <p class="sub">In der Statistik siehst du später, wie Essen und Stimmung zusammenhängen.</p>
     </article>`;
 }
 
@@ -357,15 +383,14 @@ views.today = (root) => {
         : `<div class="notice"><b>🎯 Beispielziele aktiv</b><p>Richte in einer Minute dein Profil ein, dann passen Kalorien- und Nährstoffziele zu dir.</p><button class="btn btn-primary btn-sm" data-action="onboard-open">Profil einrichten</button></div>`
     }
     ${hero(t, eaten, burned, score)}
-    ${buddy(tip)}
     ${quickActions()}
+    ${buddy(tip)}
     ${fitsSection(t, eaten, burned)}
-    ${ui.date === today ? challengesCardHtml() : ''}
     ${S.MEALS.map((m) => mealCard(m, day, yesterday, t)).join('')}
     ${waterCard(day, t)}
-    ${ui.date === today ? `<article class="card fast-card"><header class="meal-head"><span class="meal-emoji" aria-hidden="true">⏱️</span><div class="grow"><h3>Intervallfasten</h3><p class="sub">Essenspause mit Live-Timer</p></div></header><div id="fast-box">${fastingHtml()}</div></article>` : ''}
-    ${moodCard(day)}
-    ${movementCard(day)}`;
+    ${ui.date === today && s.fasting.start ? `<article class="card fast-card"><header class="meal-head"><span class="meal-emoji" aria-hidden="true">⏱️</span><div class="grow"><h3>Intervallfasten läuft</h3></div></header><div id="fast-box">${fastingHtml()}</div></article>` : ''}
+    ${day.workouts.length ? movementCard(day) : ''}
+    ${moodCard(day)}`;
 
   const remaining = t.kcal + burned - eaten.kcal;
   countUp($('#ring-num'), `rem:${ui.date}`, Math.abs(remaining));
@@ -378,28 +403,32 @@ views.today = (root) => {
 
 setInterval(() => {
   const f = store.state.fasting;
-  if (ui.tab !== 'today' || !f?.start) return;
-  const el = $('#fast-time');
-  if (!el) return;
+  if (!f?.start) return;
+  // Alle sichtbaren Timer aktualisieren (Startseite und Fenster)
   const hours = (Date.now() - f.start) / 36e5;
-  el.textContent = fastClock(hours);
   const phase = I.fastingPhase(hours, f.goalH);
-  $('#fast-emoji').textContent = phase.emoji;
-  $('#fast-phase').textContent = `${phase.text} · Ziel ${f.goalH} Std.`;
-  const c = $('#fast-fill');
   const CIRC = 2 * Math.PI * 34;
-  c?.setAttribute('stroke-dasharray', `${Math.min(1, hours / f.goalH) * CIRC} ${CIRC}`);
+  document.querySelectorAll('#fast-box').forEach((box) => {
+    const t = box.querySelector('#fast-time');
+    if (!t) return;
+    t.textContent = fastClock(hours);
+    box.querySelector('#fast-emoji').textContent = phase.emoji;
+    box.querySelector('#fast-phase').textContent = `${phase.text} · Ziel ${f.goalH} Std.`;
+    box.querySelector('#fast-fill')?.setAttribute('stroke-dasharray', `${Math.min(1, hours / f.goalH) * CIRC} ${CIRC}`);
+  });
 }, 1000);
 
 actions['fast-goal'] = (d) => {
   store.state.fasting.goalH = Number(d.h);
   commit();
+  refreshFast();
 };
 actions['fast-start'] = () => {
   store.state.fasting.start = Date.now();
   haptic(20);
   toast(`⏱️ Fasten gestartet – Ziel ${store.state.fasting.goalH} Stunden`);
   commit();
+  refreshFast();
 };
 actions['fast-stop'] = () => {
   const f = store.state.fasting;
@@ -412,6 +441,7 @@ actions['fast-stop'] = () => {
     toast(`🏆 ${fmt(hours, 1)} Stunden gefastet – Ziel erreicht!`);
   } else toast(`${fmt(hours, 1)} Stunden gefastet`);
   commit();
+  refreshFast();
 };
 
 // ---------- Aktionen ----------

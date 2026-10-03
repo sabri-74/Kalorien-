@@ -1,5 +1,5 @@
 // Offline-Cache: App-Dateien zuerst aus dem Cache, dann im Hintergrund aktualisieren.
-const CACHE = 'kalorien-v7';
+const CACHE = 'kalorien-v8';
 const ASSETS = [
   './',
   'index.html',

@@ -8,6 +8,7 @@ import { badgeGridHtml } from './rewards.js';
 import * as I from '../insights.js';
 import { MOODS } from '../emoji.js';
 import { countUp } from '../fx.js';
+import { challengesCardHtml, levelInfo } from './fun.js';
 
 const st = { range: 7, coach: '', coachBusy: false, controller: null };
 
@@ -58,13 +59,15 @@ views.stats = (root) => {
 
   root.innerHTML = `
     <header class="page-head">
-      <div><p class="eyebrow">📈 Dein Verlauf</p><h1>Statistik</h1></div>
+      <div><p class="eyebrow">📈 Dein Verlauf</p><h1>Fortschritt</h1></div>
       <div class="seg" role="group" aria-label="Zeitraum">
         <button data-action="range" data-n="7" aria-pressed="${st.range === 7}">7 Tage</button>
         <button data-action="range" data-n="30" aria-pressed="${st.range === 30}">30 Tage</button>
       </div>
     </header>
 
+    ${levelCardHtml()}
+    ${challengesCardHtml()}
     <div class="tiles">
       <div class="tile tile-orange"><span class="tile-label"><i aria-hidden="true">🔥</i>Serie</span><b class="tile-value" id="t-streak">${streak}</b><small>${streak === 1 ? 'Tag' : 'Tage'} in Folge</small></div>
       <div class="tile tile-green"><span class="tile-label"><i aria-hidden="true">🎯</i>Im Ziel</span><b class="tile-value">${onTarget}<small>/${logged.length}</small></b><small>Tage im Zeitraum</small></div>
@@ -167,6 +170,16 @@ views.stats = (root) => {
     );
   }
 };
+
+function levelCardHtml() {
+  const l = levelInfo();
+  return `<button class="level-card" data-action="level-open">
+    <span class="level-card-emoji" aria-hidden="true">${l.emoji}</span>
+    <span class="grow"><small>Level ${l.level}</small><b>${l.title}</b>
+      <span class="xp-bar"><i style="width:${Math.round(l.progress * 100)}%"></i></span>
+      <small>${fmt(l.into)} / ${fmt(l.need)} XP bis Level ${l.level + 1}</small></span>
+  </button>`;
+}
 
 function forecastHtml(f, p, w, first) {
   if (!f) return '<p class="hint">Trag dein Gewicht an mindestens 3 Tagen über eine Woche ein. Dann berechne ich, wann du dein Ziel erreichst.</p>';
