@@ -28,7 +28,7 @@ const ERROR_TEXT = {
   upstream: 'Die Verbindung zur KI ist abgebrochen. Tipp auf „Nochmal versuchen“.',
   session: 'Deine Claude-Anmeldung ist abgelaufen. Bitte melde dich neu an.',
   unavailable: 'Die KI ist in dieser Ansicht nicht verfügbar.',
-  images: 'Bilder können hier nicht an die KI gesendet werden. Beschreib dein Essen stattdessen.',
+  images: 'In dieser Ansicht kann die KI leider keine Fotos sehen. Beschreib dein Essen kurz oder scanne den Barcode – in der installierten App mit eigenem KI-Schlüssel klappt die Foto-Erkennung.',
   toolong: 'Die Anfrage war zu groß. Wähl weniger Tage oder kürzere Wünsche.',
   invalid: 'Die Antwort der KI war unvollständig. Versuch es noch einmal.',
   credit: 'Dein API-Guthaben ist aufgebraucht. Lade es in der Claude Console auf.',
@@ -195,8 +195,12 @@ function mapSampleError(e) {
 export async function analyzeMeal({ apiKey, image, text, signal }) {
   const status = await aiStatus(apiKey);
   if (!status.provider) throw new AiError('no_provider');
-  const source = image
-    ? `Analysiere das Foto dieser Mahlzeit.${text ? ` Zusatzinfo der Person: "${text}"` : ''}`
+  // Kann diese Ansicht keine Bilder senden, nie still ohne Foto fragen –
+  // sonst antwortet die KI „kein Bild erhalten“.
+  const sendImage = !!image && status.images;
+  if (image && !sendImage && !text) throw new AiError('images');
+  const source = sendImage
+    ? `Analysiere das beigefügte Foto dieser Mahlzeit. Ist es ein verpacktes Produkt, lies Name, Marke und Packungsgröße vom Etikett ab.${text ? ` Zusatzinfo der Person: "${text}"` : ''}`
     : `Die Person beschreibt, was sie gegessen hat: "${text}"`;
   const prompt = `${FOOD_RULES}\n\n${source}`;
 
@@ -204,7 +208,8 @@ export async function analyzeMeal({ apiKey, image, text, signal }) {
   if (status.provider === 'claude') {
     const sample = await getSample();
     try {
-      raw = await sample.json(prompt, { images: image && status.images ? [image] : undefined, signal });
+      // cache: false – sonst liefert „Nochmal versuchen“ 5 Minuten lang dieselbe Antwort
+      raw = await sample.json(prompt, { images: sendImage ? [image] : undefined, signal, cache: false });
     } catch (e) {
       throw mapSampleError(e);
     }
@@ -233,7 +238,7 @@ Gib 3 bis 4 konkrete, motivierende Tipps auf Deutsch (Du-Form). Jeder Tipp eine 
   if (status.provider === 'claude') {
     const sample = await getSample();
     try {
-      const { text } = await sample(prompt, { signal, onText: onText ? ({ text: t }) => onText(t) : undefined });
+      const { text } = await sample(prompt, { signal, cache: false, onText: onText ? ({ text: t }) => onText(t) : undefined });
       return text;
     } catch (e) {
       throw mapSampleError(e);
@@ -249,10 +254,11 @@ Gib 3 bis 4 konkrete, motivierende Tipps auf Deutsch (Du-Form). Jeder Tipp eine 
 async function askJson({ apiKey, prompt, schema, image, signal, fast }) {
   const status = await aiStatus(apiKey);
   if (!status.provider) throw new AiError('no_provider');
+  if (image && !status.images) throw new AiError('images');
   if (status.provider === 'claude') {
     const sample = await getSample();
     try {
-      return await sample.json(prompt, { images: image && status.images ? [image] : undefined, signal, ...(fast ? { modelTier: 'quick' } : {}) });
+      return await sample.json(prompt, { images: image ? [image] : undefined, signal, cache: false, ...(fast ? { modelTier: 'quick' } : {}) });
     } catch (e) {
       throw mapSampleError(e);
     }

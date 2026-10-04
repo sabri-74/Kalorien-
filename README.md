@@ -113,11 +113,19 @@ npm start            # oder: python3 -m http.server 8080
 
 Dann <http://localhost:8080> öffnen.
 
-### Aufs Handy bringen
+### Aufs Handy bringen (installieren)
 
-Am einfachsten über **GitHub Pages**: im Repository unter *Settings → Pages* den Branch auswählen und
-speichern. Die angezeigte Adresse auf dem Handy öffnen und „Zum Startbildschirm hinzufügen“ wählen.
-Danach funktioniert die App auch offline (nur KI und Online-Suche brauchen Internet).
+1. Die App im Internet bereitstellen, am einfachsten über **GitHub Pages**: im Repository unter
+   *Settings → Pages* bei „Branch“ den gewünschten Branch und `/ (root)` wählen und speichern.
+2. Die angezeigte Adresse auf dem Handy öffnen.
+   - **iPhone (Safari):** Teilen-Knopf → „Zum Home-Bildschirm“.
+   - **Android (Chrome):** Menü ⋮ → „App installieren“ bzw. „Zum Startbildschirm hinzufügen“.
+3. Danach startet die App wie eine normale App im Vollbild mit eigenem Symbol und funktioniert offline
+   (nur KI und Online-Suche brauchen Internet).
+
+Für die Foto-Erkennung in der installierten App einmal den eigenen KI-Schlüssel im Profil hinterlegen
+(siehe oben). In der Claude-Vorschau können je nach Ansicht keine Fotos an die KI gehen; die App zeigt
+das dann direkt an und bietet „Beschreiben“ an.
 
 ## Tests
 

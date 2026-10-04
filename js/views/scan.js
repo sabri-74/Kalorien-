@@ -31,13 +31,25 @@ function choosePhoto(capture) {
   input.click();
 }
 
+// Ob diese Ansicht Fotos an die KI schicken kann – vorab ermitteln, weil der
+// Dateidialog direkt im Klick geöffnet werden muss.
+let photoOk = null;
+const refreshPhotoOk = () =>
+  aiStatus(store.state.settings.apiKey).then((st) => (photoOk = !st.provider || st.images)).catch(() => {});
+refreshPhotoOk();
+
 export function openAi(mode, meal) {
   ai.meal = meal || defaultMeal();
   ai.blob = null;
   ai.thumb = null;
   ai.result = null;
+  ai.text = '';
   ai.asDish = false;
   if (mode === 'photo') {
+    if (photoOk === false) {
+      openSheet('📸 Foto-Erkennung', noPhotoHtml());
+      return;
+    }
     choosePhoto(true);
     return;
   }
@@ -45,8 +57,20 @@ export function openAi(mode, meal) {
   checkProvider();
 }
 
+function noPhotoHtml() {
+  return `<div class="ai-loading">
+    <div class="ai-orb">🙈</div>
+    <h3>Fotos gehen in dieser Ansicht nicht</h3>
+    <p class="hint">Hier kann die KI leider keine Bilder sehen. Beschreib dein Essen in ein paar Worten – das klappt genauso schnell. In der installierten App mit eigenem KI-Schlüssel funktioniert die Foto-Erkennung.</p>
+    <div class="sheet-actions">
+      <button class="btn btn-primary" data-action="ai-describe-instead">✍️ Beschreiben</button>
+    </div>
+  </div>`;
+}
+
 async function checkProvider() {
   const st = await aiStatus(store.state.settings.apiKey);
+  photoOk = !st.provider || st.images;
   const box = $('#ai-provider');
   if (!box) return;
   if (!st.provider) box.innerHTML = setupNotice();
@@ -66,7 +90,7 @@ function describeHtml() {
     <div id="ai-provider"></div>
     <form class="stack" data-form="ai-describe">
       <label class="field">Was hast du gegessen?
-        <textarea id="ai-text" rows="3" placeholder="z. B. Teller Nudeln mit Tomatensoße und ein Glas Apfelschorle">${esc(ai.text)}</textarea>
+        <textarea id="ai-text" rows="3" placeholder="${ai.thumb && photoOk === false ? 'Was ist auf dem Foto? z. B. Schokoriegel 50 g' : 'z. B. Teller Nudeln mit Tomatensoße und ein Glas Apfelschorle'}">${esc(ai.text)}</textarea>
       </label>
       <div class="chips chips-wrap">${EXAMPLES.map((e) => `<button type="button" class="chip" data-action="ai-example" data-text="${esc(e)}">${esc(e)}</button>`).join('')}</div>
       <div class="grid-2">
@@ -136,10 +160,13 @@ function loadingHtml() {
 }
 
 async function runAnalysis() {
+  ai.controller?.abort();
   openSheet('KI-Erkennung', loadingHtml(), { onClose: () => ai.controller?.abort() });
-  ai.controller = new AbortController();
+  const controller = new AbortController();
+  ai.controller = controller;
   try {
-    ai.result = await analyzeMeal({ apiKey: store.state.settings.apiKey, image: ai.blob, text: ai.text, signal: ai.controller.signal });
+    ai.result = await analyzeMeal({ apiKey: store.state.settings.apiKey, image: ai.blob, text: ai.text, signal: controller.signal });
+    if (controller.signal.aborted) return;
     haptic(20);
     if (!ai.result.items.length) {
       setSheet('KI-Erkennung', errorHtml(ai.result.note || 'Auf dem Foto war kein Essen zu erkennen.'));
@@ -147,21 +174,22 @@ async function runAnalysis() {
     }
     setSheet('Stimmt das so?', resultHtml());
   } catch (e) {
-    if (e.code === 'cancelled') return;
-    setSheet('KI-Erkennung', e.code === 'no_provider' ? setupNotice() : errorHtml(aiErrorText(e)));
+    if (e.code === 'cancelled' || controller.signal.aborted) return;
+    if (e.code === 'images') photoOk = false;
+    setSheet('KI-Erkennung', e.code === 'no_provider' ? setupNotice() : errorHtml(aiErrorText(e), e.code !== 'images'));
   } finally {
-    ai.controller = null;
+    if (ai.controller === controller) ai.controller = null;
   }
 }
 
-function errorHtml(msg) {
+function errorHtml(msg, canRetry = true) {
   return `<div class="ai-loading">
     ${ai.thumb ? `<div class="ai-photo"><img src="${ai.thumb}" alt=""></div>` : ''}
     <h3>Das hat nicht geklappt</h3>
     <p class="hint">${esc(msg)}</p>
     <div class="sheet-actions">
-      <button class="btn btn-ghost" data-action="ai-describe-instead">Beschreiben</button>
-      <button class="btn btn-primary" data-action="ai-retry">Nochmal versuchen</button>
+      <button class="btn ${canRetry ? 'btn-ghost' : 'btn-primary'}" data-action="ai-describe-instead">✍️ Beschreiben</button>
+      ${canRetry ? '<button class="btn btn-primary" data-action="ai-retry">🔄 Nochmal versuchen</button>' : ''}
     </div>
   </div>`;
 }
