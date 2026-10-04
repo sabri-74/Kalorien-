@@ -35,11 +35,18 @@ export function emptyDay() {
 }
 
 export function load() {
+  let raw = null;
   try {
-    const raw = localStorage.getItem(KEY);
+    raw = localStorage.getItem(KEY);
     if (!raw) return defaultState();
     return migrate(JSON.parse(raw));
   } catch {
+    // Nie stillschweigend überschreiben: kaputte Daten vorher wegsichern
+    try {
+      if (raw) localStorage.setItem(`${KEY}.backup-${Date.now()}`, raw);
+    } catch {
+      /* Speicher voll – dann bleibt nur der Neustart */
+    }
     return defaultState();
   }
 }
@@ -53,6 +60,9 @@ export function save(state) {
   }
 }
 
+const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+const arr = (v) => (Array.isArray(v) ? v : []);
+
 /** Einträge aus Version 1 (per100) auf das neue Format (base + unit) heben. */
 function migrateEntry(e) {
   if (e.base) return { unit: 'g', ...e };
@@ -62,22 +72,36 @@ function migrateEntry(e) {
   return { ...rest, unit: e.amount ? 'g' : 'portion', amount: e.amount || 1, base };
 }
 
-/** Füllt fehlende Felder auf, damit ältere oder importierte Daten funktionieren. */
-export function migrate(data) {
+/** Füllt fehlende Felder auf, damit ältere, importierte oder beschädigte Daten funktionieren. */
+export function migrate(input) {
+  const data = isObj(input) ? input : {};
   const base = defaultState();
-  const state = { ...base, ...data, settings: { ...base.settings, ...(data.settings || {}) }, fasting: { ...base.fasting, ...(data.fasting || {}) }, version: 2 };
-  if (!Array.isArray(state.badges)) state.badges = [];
-  state.prefs = { likes: [], dislikes: [], ...(data.prefs || {}) };
+  const state = {
+    ...base,
+    ...data,
+    settings: { ...base.settings, ...(isObj(data.settings) ? data.settings : {}) },
+    fasting: { ...base.fasting, ...(isObj(data.fasting) ? data.fasting : {}) },
+    version: 2,
+  };
+  if (!isObj(state.profile)) state.profile = null;
+  state.badges = arr(state.badges);
+  const prefs = isObj(data.prefs) ? data.prefs : {};
+  state.prefs = { likes: arr(prefs.likes).filter((x) => typeof x === 'string'), dislikes: arr(prefs.dislikes).filter((x) => typeof x === 'string') };
   for (const key of ['customFoods', 'recentFoods', 'favorites', 'dishes', 'weights', 'shopping']) {
-    if (!Array.isArray(state[key])) state[key] = [];
+    state[key] = arr(state[key]).filter(isObj);
   }
-  for (const key of Object.keys(state.days || {})) {
-    const d = state.days[key];
-    const meals = { ...emptyDay().meals, ...(d.meals || {}) };
-    for (const m of Object.keys(meals)) meals[m] = (meals[m] || []).map(migrateEntry);
-    state.days[key] = { ...emptyDay(), ...d, meals, workouts: d.workouts || [] };
+  if (!isObj(state.mealPlan) || !Array.isArray(state.mealPlan.days)) state.mealPlan = null;
+  if (!isObj(state.activeWorkout) || !Array.isArray(state.activeWorkout.exercises)) state.activeWorkout = null;
+  const days = isObj(data.days) ? data.days : {};
+  state.days = {};
+  for (const key of Object.keys(days)) {
+    const d = days[key];
+    if (!isObj(d) || !/^\d{4}-\d{2}-\d{2}$/.test(key)) continue;
+    const meals = emptyDay().meals;
+    for (const m of Object.keys(meals)) meals[m] = arr(d.meals?.[m]).filter(isObj).map(migrateEntry);
+    state.days[key] = { ...emptyDay(), ...d, meals, water: Number(d.water) || 0, workouts: arr(d.workouts).filter(isObj) };
   }
-  state.weights = state.weights.filter((w) => w && w.date && w.kg).sort((a, b) => a.date.localeCompare(b.date));
+  state.weights = state.weights.filter((w) => w.date && w.kg).sort((a, b) => String(a.date).localeCompare(String(b.date)));
   return state;
 }
 

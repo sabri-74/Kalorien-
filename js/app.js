@@ -146,5 +146,16 @@ save();
 if (!store.state.profile) openOnboarding();
 
 if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !window.claude) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  // Neue Version installiert → einmal neu laden, damit nicht alte und neue Dateien gemischt laufen
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || reloading || $('#sheet').open || store.state.activeWorkout) return;
+    reloading = true;
+    location.reload();
+  });
+  navigator.serviceWorker.register('sw.js').then((reg) => {
+    // Beim Zurückkehren in die installierte App nach Updates schauen
+    document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && reg.update().catch(() => {}));
+  }).catch(() => {});
 }

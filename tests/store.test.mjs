@@ -37,3 +37,25 @@ test('Leerer Zustand ist gültig', () => {
   assert.equal(s.version, 2);
   assert.deepEqual(s.days, {});
 });
+
+test('beschädigte Daten führen nie zum Absturz und behalten Gültiges', () => {
+  const bad = [
+    null, [], { days: null }, { settings: null, fasting: null, prefs: { likes: null } },
+    { days: { '2026-10-01': null, '2026-10-02': { meals: { lunch: [null, 'x', { name: 'Apfel', amount: 100, base: { kcal: 52, protein: 0, carbs: 14, fat: 0 } }], dinner: 'kaputt' }, workouts: 'x' } } },
+    { mealPlan: { days: null }, activeWorkout: { name: 'x' }, weights: [null, 5, { date: '2026-10-01', kg: 80 }] },
+  ];
+  for (const d of bad) {
+    const s = migrate(d);
+    assert.ok(Array.isArray(s.prefs.likes));
+    for (const day of Object.values(s.days)) {
+      for (const list of Object.values(day.meals)) assert.ok(Array.isArray(list));
+      assert.ok(Array.isArray(day.workouts));
+    }
+  }
+  const s = migrate(bad[4]);
+  assert.deepEqual(Object.keys(s.days), ['2026-10-02']);
+  assert.equal(s.days['2026-10-02'].meals.lunch.length, 1);
+  assert.equal(migrate(bad[5]).mealPlan, null);
+  assert.equal(migrate(bad[5]).activeWorkout, null);
+  assert.equal(migrate(bad[5]).weights.length, 1);
+});
