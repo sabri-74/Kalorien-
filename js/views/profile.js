@@ -79,6 +79,7 @@ views.profile = (root) => {
         <button class="btn btn-soft" data-action="export">${icon('save')}Sicherung speichern</button>
         <button class="btn btn-soft" data-action="copy-export">${icon('copy')}Kopieren</button>
         <label class="btn btn-ghost">${icon('undo')}Sicherung laden<input type="file" id="import-file" accept="application/json,.json" hidden></label>
+        <button class="btn btn-ghost" data-action="paste-import">📋 Einfügen</button>
         <button class="btn btn-ghost" data-action="demo">${icon('sparkle')}Beispieldaten</button>
       </div>
       <button class="link-btn danger" data-action="reset">${icon('trash')}Alle Daten löschen</button>
@@ -189,21 +190,45 @@ actions['copy-export'] = async () => {
   }
 };
 
-inputs['import-file'] = async (el) => {
-  const file = el.files?.[0];
-  if (!file) return;
+/** Sicherung (JSON-Text) übernehmen. Liefert true bei Erfolg. */
+function importBackup(text) {
   try {
-    const data = JSON.parse(await file.text());
+    const data = JSON.parse(String(text).trim());
     if (!data || typeof data !== 'object' || !data.days) throw new Error('format');
     const key = store.state.settings.apiKey;
     store.state = S.migrate(data);
     store.state.settings.apiKey = store.state.settings.apiKey || key;
     toast('Sicherung geladen');
     commit();
+    if (store.state.profile && $('#onboard').open) $('#onboard').close();
+    return true;
   } catch {
-    toast('Die Datei ist keine gültige Sicherung dieser App.');
+    toast('Das ist keine gültige Sicherung dieser App.');
+    return false;
   }
+}
+
+inputs['import-file'] = async (el) => {
+  const file = el.files?.[0];
+  if (!file) return;
+  importBackup(await file.text());
   el.value = '';
+};
+
+actions['paste-import'] = async () => {
+  let text = '';
+  try {
+    text = await navigator.clipboard.readText();
+  } catch {
+    toast('Einfügen nicht möglich. Erlaube den Zugriff auf die Zwischenablage oder nutz „Sicherung laden“.');
+    return;
+  }
+  if (!text.trim()) {
+    toast('Die Zwischenablage ist leer. Kopier die Sicherung zuerst in der alten Ansicht.');
+    return;
+  }
+  if (store.state.profile && !(await confirmDialog('Die eingefügte Sicherung ersetzt alle Daten auf diesem Gerät. Fortfahren?', 'Ersetzen'))) return;
+  importBackup(text);
 };
 
 actions.reset = async () => {
@@ -369,7 +394,7 @@ function renderOnboarding() {
     <div class="ob-content">${body}</div>
     <div class="ob-foot">
       <button class="btn btn-primary btn-block btn-lg" data-action="ob-next">${next}</button>
-      ${ob.step === 0 && !store.state.profile ? '<button class="btn btn-ghost btn-block" data-action="ob-demo">Erst mal umschauen (mit Beispieldaten)</button>' : ''}
+      ${ob.step === 0 && !store.state.profile ? '<button class="btn btn-ghost btn-block" data-action="ob-demo">Erst mal umschauen (mit Beispieldaten)</button><button class="btn btn-ghost btn-block" data-action="paste-import">📋 Ich habe eine kopierte Sicherung</button>' : ''}
     </div>`;
 }
 

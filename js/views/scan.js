@@ -63,10 +63,28 @@ function noPhotoHtml() {
     <h3>Fotos gehen in dieser Ansicht nicht</h3>
     <p class="hint">Hier kann die KI leider keine Bilder sehen. Beschreib dein Essen in ein paar Worten – das klappt genauso schnell. In der installierten App mit eigenem KI-Schlüssel funktioniert die Foto-Erkennung.</p>
     <div class="sheet-actions">
+      <button class="btn btn-soft" data-action="install-help">📲 Foto freischalten</button>
       <button class="btn btn-primary" data-action="ai-describe-instead">✍️ Beschreiben</button>
     </div>
   </div>`;
 }
+
+export const APP_URL = 'https://sabri-74.github.io/Kalorien-/';
+
+function installHelpHtml() {
+  return `
+    <p class="hint">Die Foto-Erkennung läuft in der eigenen App auf deinem Handy. So richtest du sie in 2 Minuten ein:</p>
+    <ol class="steps">
+      <li><span>Öffne in <b>Safari</b> (iPhone) bzw. <b>Chrome</b> (Android):<br><a href="${APP_URL}" target="_blank" rel="noopener"><b>${APP_URL.replace('https://', '')}</b></a></span></li>
+      <li><span>iPhone: Teilen-Knopf <b>⬆️</b> → <b>„Zum Home-Bildschirm“</b>. Android: Menü <b>⋮</b> → <b>„App installieren“</b>.</span></li>
+      <li><span>Unter <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a> einen KI-Schlüssel anlegen (ein Foto kostet ca. 1–3 Cent).</span></li>
+      <li><span>In der App: <b>Profil → KI-Erkennung</b> → Schlüssel einfügen. Fertig – jetzt einfach fotografieren 📸</span></li>
+    </ol>
+    <p class="hint">💡 Deine bisherigen Einträge nimmst du mit: hier unter Profil → <b>Kopieren</b>, dann in der App beim Start <b>„Ich habe eine kopierte Sicherung“</b> tippen.</p>
+    <div class="sheet-actions"><button class="btn btn-primary" data-action="ai-describe-instead">✍️ Jetzt erst mal beschreiben</button></div>`;
+}
+
+actions['install-help'] = () => setSheet('📲 Foto-Erkennung freischalten', installHelpHtml());
 
 async function checkProvider() {
   const st = await aiStatus(store.state.settings.apiKey);

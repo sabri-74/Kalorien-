@@ -123,6 +123,11 @@ Dann <http://localhost:8080> öffnen.
 3. Danach startet die App wie eine normale App im Vollbild mit eigenem Symbol und funktioniert offline
    (nur KI und Online-Suche brauchen Internet).
 
+Adresse nach dem Einschalten von GitHub Pages: <https://sabri-74.github.io/Kalorien-/>
+
+**Daten mitnehmen:** In der alten Ansicht unter Profil → „Kopieren“, dann in der neuen App beim Start
+„Ich habe eine kopierte Sicherung“ (oder später Profil → „Einfügen“).
+
 Für die Foto-Erkennung in der installierten App einmal den eigenen KI-Schlüssel im Profil hinterlegen
 (siehe oben). In der Claude-Vorschau können je nach Ansicht keine Fotos an die KI gehen; die App zeigt
 das dann direkt an und bietet „Beschreiben“ an.
